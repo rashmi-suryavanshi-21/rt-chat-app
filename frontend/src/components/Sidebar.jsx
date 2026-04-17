@@ -1,21 +1,24 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { MessageSquare } from "lucide-react";
+import SearchUser from "./SearchUser";
 
 const Sidebar = () => {
   const {
     users,
     getUsers,
     setSelectedUser,
-    selectedUser,
+    selectedUser: currentChatUser,
     subscribeToMessages,
     unsubscribeFromMessages,
-    selectedUser: currentChatUser,
+    typingUsers,
   } = useChatStore();
 
   const { onlineUsers } = useAuthStore();
-  const { typingUsers } = useChatStore();
+
+  const [query, setQuery] = useState("");
+
   useEffect(() => {
     getUsers();
     subscribeToMessages();
@@ -24,6 +27,58 @@ const Sidebar = () => {
       unsubscribeFromMessages();
     };
   }, []);
+
+  const q = query.toLowerCase();
+
+  // 🔥 HIGHLIGHT FUNCTION
+  const highlight = (text) => {
+    if (!query) return text;
+
+    const regex = new RegExp(`(${query})`, "gi");
+
+    return text.split(regex).map((part, i) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <span
+          key={i}
+          className="bg-yellow-300 text-black px-1 rounded"
+        >
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  };
+
+  // ✅ FILTER + PRIORITY SORT
+  const displayUsers = (users || [])
+    .filter((user) =>
+      user.fullName.toLowerCase().includes(q)
+    )
+    .sort((a, b) => {
+      if (!q) {
+        return (
+          new Date(b.updatedAt || 0) -
+          new Date(a.updatedAt || 0)
+        );
+      }
+
+      const aName = a.fullName.toLowerCase();
+      const bName = b.fullName.toLowerCase();
+
+      const aStarts = aName.startsWith(q);
+      const bStarts = bName.startsWith(q);
+
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+
+      const aIndex = aName.indexOf(q);
+      const bIndex = bName.indexOf(q);
+
+      if (aIndex !== bIndex) return aIndex - bIndex;
+
+      return aName.localeCompare(bName);
+    });
 
   return (
     <div className="w-80 border-r border-base-300 bg-base-100 overflow-y-auto">
@@ -34,69 +89,69 @@ const Sidebar = () => {
         Chats
       </div>
 
-      {/* Users */}
+      {/* 🔍 SEARCH */}
+      <SearchUser onSearch={setQuery} />
+
+      {/* 👇 SINGLE LIST */}
       <div className="p-2 space-y-2">
-        {users
-          ?.slice()
-          .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
-          .map((user) => {
-            const isOnline = onlineUsers?.includes(user._id);
+        {displayUsers.map((user) => {
+          const isOnline = onlineUsers?.includes(user._id);
+          const isActiveChat =
+            currentChatUser?._id === user._id;
 
-            // 🔥 IMPORTANT FIX: active chat = no unread count
-            const isActiveChat = currentChatUser?._id === user._id;
+          const unreadCount = isActiveChat
+            ? 0
+            : user.unreadCount || 0;
 
-            const unreadCount =
-              isActiveChat ? 0 : (user.unreadCount || 0);
+          return (
+            <div
+              key={user._id}
+              onClick={() => setSelectedUser(user)}
+              className={`
+                flex items-center gap-3 p-3 rounded-lg cursor-pointer
+                hover:bg-base-200 transition
+                ${isActiveChat ? "bg-base-200" : ""}
+              `}
+            >
+              {/* Avatar */}
+              <div className="relative">
+                <img
+                  src={user.profilePic || "/avatar.png"}
+                  className="w-10 h-10 rounded-full"
+                />
 
-            return (
-              <div
-                key={user._id}
-                onClick={() => setSelectedUser(user)}
-                className={`
-                  flex items-center gap-3 p-3 rounded-lg cursor-pointer
-                  hover:bg-base-200 transition
-                  ${isActiveChat ? "bg-base-200" : ""}
-                `}
-              >
-                {/* Avatar */}
-                <div className="relative">
-                  <img
-                    src={user.profilePic || "/avatar.png"}
-                    className="w-10 h-10 rounded-full"
-                  />
+                {isOnline && (
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+                )}
+              </div>
 
-                  {isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+              {/* Info */}
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <p className="font-medium">
+                    {highlight(user.fullName)} {/* ✅ HIGHLIGHT */}
+                  </p>
+
+                  {unreadCount > 0 && (
+                    <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+                      {unreadCount}
+                    </span>
                   )}
                 </div>
 
-                {/* Info */}
-                <div className="flex-1">
-
-                  <div className="flex justify-between items-center">
-                    <p className="font-medium">{user.fullName}</p>
-
-                    {/* 🔥 UNREAD BADGE FIXED */}
-                    {unreadCount > 0 && (
-                      <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-base-content/60 truncate">
-                    {typingUsers[user._id] ? (
-                      <span className="text-blue-400 animate-pulse">
-                        typing...
-                      </span>
-                    ) : (
-                      user.lastMessage || "No messages yet"
-                    )}
-                  </p>
-                </div>
+                <p className="text-xs text-base-content/60 truncate">
+                  {typingUsers?.[user._id] ? (
+                    <span className="text-blue-400 animate-pulse">
+                      typing...
+                    </span>
+                  ) : (user.lastMessage || "No messages yet").length > 15
+  ? (user.lastMessage || "No messages yet").slice(0, 15) + "..."
+  : (user.lastMessage || "No messages yet")}
+                </p>
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

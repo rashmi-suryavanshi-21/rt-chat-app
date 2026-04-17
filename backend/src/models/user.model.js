@@ -24,6 +24,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// 🔥 TEXT INDEX FOR SEARCH (IMPORTANT)
+userSchema.index({ fullName: "text", email: "text" });
+
 const User = mongoose.model("User", userSchema);
 
 export default User;

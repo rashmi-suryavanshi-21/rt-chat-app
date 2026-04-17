@@ -13,6 +13,7 @@ const io = new Server(server, {
   },
 });
 
+// 🔥 socket map
 const userSocketMap = {};
 
 export function getReceiverSocketId(userId) {
@@ -20,21 +21,55 @@ export function getReceiverSocketId(userId) {
 }
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
   const userId = socket.handshake.query.userId;
-  if (!userId) return;
 
+  if (!userId) {
+    console.log("❌ No userId in handshake");
+    return;
+  }
+
+  console.log("User connected:", userId, socket.id);
+
+  // store socket
   userSocketMap[userId] = socket.id;
   socket.userId = userId;
+
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
   console.log("userSocketMap:", userSocketMap);
 
   // =========================
-  // MARK AS READ (FIXED)
+  // TYPING
+  // =========================
+  socket.on("typing", ({ receiverId }) => {
+    const receiverSocketId = userSocketMap[receiverId];
+
+    console.log("typing -> receiverSocketId:", receiverSocketId);
+
+    if (!receiverSocketId) return;
+
+    io.to(receiverSocketId).emit("typing", {
+      senderId: userId,
+    });
+  });
+
+  socket.on("stopTyping", ({ receiverId }) => {
+    const receiverSocketId = userSocketMap[receiverId];
+
+    console.log("stopTyping -> receiverSocketId:", receiverSocketId);
+
+    if (!receiverSocketId) return;
+
+    io.to(receiverSocketId).emit("stopTyping", {
+      senderId: userId,
+    });
+  });
+
+  // =========================
+  // MARK AS READ
   // =========================
   socket.on("markAsRead", async ({ senderId }) => {
-    const receiverId = socket.userId;
+    const receiverId = userId;
+
     if (!senderId || !receiverId) return;
 
     const result = await Message.updateMany(
@@ -45,9 +80,7 @@ io.on("connection", (socket) => {
     const senderSocketId = userSocketMap[senderId];
 
     if (senderSocketId && result.modifiedCount > 0) {
-      io.to(senderSocketId).emit("messagesRead", {
-        senderId,
-      });
+      io.to(senderSocketId).emit("messagesRead", { senderId });
     }
   });
 
@@ -55,59 +88,14 @@ io.on("connection", (socket) => {
   // DISCONNECT
   // =========================
   socket.on("disconnect", () => {
+    console.log("User disconnected:", userId);
+
     if (userSocketMap[userId] === socket.id) {
       delete userSocketMap[userId];
     }
 
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
-
-  socket.on("typing", ({ receiverId }) => {
-  const receiverSocketId = userSocketMap[receiverId];
-
-  console.log("receiverSocketId:", receiverSocketId);
-
-  if (!receiverSocketId) return;
-
-  io.to(receiverSocketId).emit("typing", {
-    senderId: socket.userId,
-  });
 });
-// ---
-  socket.on("typing", (data) => {
-  console.log("🔥 typing received from frontend:", data);
-});
-socket.on("stopTyping", ({ receiverId }) => {
-  const receiverSocketId = userSocketMap[receiverId];
-
-  console.log("receiverSocketId stop:", receiverSocketId);
-
-  if (!receiverSocketId) return;
-
-  io.to(receiverSocketId).emit("stopTyping", {
-    senderId: socket.userId,
-  });
-});
-// --
-socket.on("stopTyping", (data) => {
-  console.log("🛑 stopTyping received:", data);
-});
-socket.on("markAsRead", async ({ senderId }) => {
-  const receiverId = socket.userId;
-  if (!senderId || !receiverId) return;
-
-  const result = await Message.updateMany(
-    { senderId, receiverId, isRead: false },
-    { isRead: true }
-  );
-
-  const senderSocketId = userSocketMap[senderId];
-
-  if (senderSocketId && result.modifiedCount > 0) {
-    io.to(senderSocketId).emit("messagesRead", { senderId });
-  }
-});
-});
-
 
 export { io, app, server };

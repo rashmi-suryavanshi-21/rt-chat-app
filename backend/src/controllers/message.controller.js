@@ -14,24 +14,36 @@ export const getUsersForSidebar = async (req, res) => {
       _id: { $ne: loggedInUserId },
     }).select("-password");
 
-    const usersWithUnread = await Promise.all(
+    const usersWithData = await Promise.all(
       users.map(async (user) => {
+
+        // ✅ unread count
         const unreadCount = await Message.countDocuments({
           senderId: user._id,
           receiverId: loggedInUserId,
           isRead: false,
         });
 
+        // ✅ LAST MESSAGE (MOST IMPORTANT FIX)
+        const lastMsg = await Message.findOne({
+          $or: [
+            { senderId: loggedInUserId, receiverId: user._id },
+            { senderId: user._id, receiverId: loggedInUserId },
+          ],
+        }).sort({ createdAt: -1 });
+
         return {
           ...user.toObject(),
           unreadCount,
-          lastMessage: "",
+          lastMessage: lastMsg?.text || "", // 👈 yahi magic hai
         };
       })
     );
 
-    res.status(200).json(usersWithUnread);
+    res.status(200).json(usersWithData);
+
   } catch (error) {
+    console.log("Error in getUsersForSidebar:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };

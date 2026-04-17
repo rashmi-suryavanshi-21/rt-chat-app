@@ -11,6 +11,7 @@ import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import healthRoutes from "./routes/health.route.js";
 import { app, server } from "./lib/socket.js";
+import userRoutes from "./routes/user.route.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -33,6 +34,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/health", healthRoutes);
+app.use("/api/users", userRoutes);
 
 // app.use(express.json({ limit: "10mb" }));
 // console.log(process.env.CLOUDINARY_CLOUD_NAME)
