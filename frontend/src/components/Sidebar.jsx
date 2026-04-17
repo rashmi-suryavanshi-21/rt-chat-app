@@ -1,0 +1,105 @@
+import { useEffect } from "react";
+import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { MessageSquare } from "lucide-react";
+
+const Sidebar = () => {
+  const {
+    users,
+    getUsers,
+    setSelectedUser,
+    selectedUser,
+    subscribeToMessages,
+    unsubscribeFromMessages,
+    selectedUser: currentChatUser,
+  } = useChatStore();
+
+  const { onlineUsers } = useAuthStore();
+  const { typingUsers } = useChatStore();
+  useEffect(() => {
+    getUsers();
+    subscribeToMessages();
+
+    return () => {
+      unsubscribeFromMessages();
+    };
+  }, []);
+
+  return (
+    <div className="w-80 border-r border-base-300 bg-base-100 overflow-y-auto">
+
+      {/* Header */}
+      <div className="p-4 border-b border-base-300 font-semibold flex items-center gap-2">
+        <MessageSquare className="w-5 h-5" />
+        Chats
+      </div>
+
+      {/* Users */}
+      <div className="p-2 space-y-2">
+        {users
+          ?.slice()
+          .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+          .map((user) => {
+            const isOnline = onlineUsers?.includes(user._id);
+
+            // 🔥 IMPORTANT FIX: active chat = no unread count
+            const isActiveChat = currentChatUser?._id === user._id;
+
+            const unreadCount =
+              isActiveChat ? 0 : (user.unreadCount || 0);
+
+            return (
+              <div
+                key={user._id}
+                onClick={() => setSelectedUser(user)}
+                className={`
+                  flex items-center gap-3 p-3 rounded-lg cursor-pointer
+                  hover:bg-base-200 transition
+                  ${isActiveChat ? "bg-base-200" : ""}
+                `}
+              >
+                {/* Avatar */}
+                <div className="relative">
+                  <img
+                    src={user.profilePic || "/avatar.png"}
+                    className="w-10 h-10 rounded-full"
+                  />
+
+                  {isOnline && (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1">
+
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium">{user.fullName}</p>
+
+                    {/* 🔥 UNREAD BADGE FIXED */}
+                    {unreadCount > 0 && (
+                      <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-base-content/60 truncate">
+                    {typingUsers[user._id] ? (
+                      <span className="text-blue-400 animate-pulse">
+                        typing...
+                      </span>
+                    ) : (
+                      user.lastMessage || "No messages yet"
+                    )}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+      </div>
+    </div>
+  );
+};
+
+export default Sidebar;
