@@ -1,6 +1,8 @@
 import { THEMES } from "../constants";
 import { useThemeStore } from "../store/useThemeStore";
 import { Send } from "lucide-react";
+import { X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const PREVIEW_MESSAGES = [
   { id: 1, content: "Hey! How's it going?", isSent: false },
@@ -9,15 +11,21 @@ const PREVIEW_MESSAGES = [
 
 const SettingsPage = () => {
   const { theme, setTheme } = useThemeStore();
-
+  const navigate = useNavigate();
   return (
     <div className="h-screen container mx-auto px-4 pt-20 max-w-5xl">
-      <div className="space-y-6">
+      <div className="space-y-0.5 relative" >
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-4 right-4 btn btn-sm btn-circle"
+        >
+          <X className="w-4 h-4" />
+        </button>
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold">Theme</h2>
           <p className="text-sm text-base-content/70">Choose a theme for your chat interface</p>
         </div>
-
+        {/* Close Button */}
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
           {THEMES.map((t) => (
             <button
@@ -28,7 +36,10 @@ const SettingsPage = () => {
               `}
               onClick={() => setTheme(t)}
             >
-              <div className="relative h-8 w-full rounded-md overflow-hidden" data-theme={t}>
+              <div
+                data-theme={t}
+                className="relative h-8 w-full rounded-md overflow-hidden border border-base-300"
+              >
                 <div className="absolute inset-0 grid grid-cols-4 gap-px p-1">
                   <div className="rounded bg-primary"></div>
                   <div className="rounded bg-secondary"></div>
