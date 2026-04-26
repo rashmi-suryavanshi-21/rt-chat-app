@@ -175,3 +175,24 @@ export const markMessagesAsRead = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const scheduleMessage = async (req, res) => {
+  try {
+    const { receiverId, text, scheduledTime } = req.body;
+    const senderId = req.user._id;
+
+    const message = await Message.create({
+      senderId,
+      receiverId,
+      text,
+      scheduledTime,
+      isScheduled: true,
+      isSent: false,
+    });
+
+    res.status(201).json(message);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error scheduling message" });
+  }
+};

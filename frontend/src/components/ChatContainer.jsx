@@ -5,7 +5,7 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, Clock } from "lucide-react";
 
 const ChatContainer = () => {
   const [openImage, setOpenImage] = useState(null);
@@ -89,12 +89,10 @@ const ChatContainer = () => {
           <div
             key={message._id}
             ref={index === messages.length - 1 ? messageEndRef : null}
-            className={`chat ${message.senderId === authUser._id
-              ? "chat-end"
-              : "chat-start"
-              }`}
+            className={`chat ${
+              message.senderId === authUser._id ? "chat-end" : "chat-start"
+            }`}
           >
-
             {/* Avatar */}
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border">
@@ -112,7 +110,11 @@ const ChatContainer = () => {
             {/* Time */}
             <div className="chat-header mb-1">
               <time className="text-xs opacity-50 ml-1">
-                {formatMessageTime(message.createdAt)}
+                {formatMessageTime(
+                  message.isScheduled
+                    ? message.sentAt || message.scheduledTime
+                    : message.createdAt,
+                )}
               </time>
             </div>
 
@@ -128,10 +130,19 @@ const ChatContainer = () => {
 
               {message.text && <p>{message.text}</p>}
 
+              {message.isScheduled && !message.isSent && (
+                <div className="text-xs text-gray-400 mt-1">
+                  Scheduled for{" "}
+                  {new Date(message.scheduledTime).toLocaleString()}
+                </div>
+              )}
+
               {/* Read Receipt */}
               {message.senderId === authUser._id && (
                 <div className="flex justify-end mt-1">
-                  {message.isRead ? (
+                  {message.isScheduled && !message.isSent ? (
+                    <Clock className="size-4 text-yellow-500" />
+                  ) : message.isRead ? (
                     <CheckCheck className="size-4 text-blue-500" />
                   ) : (
                     <Check className="size-4 text-gray-400" />
@@ -148,21 +159,15 @@ const ChatContainer = () => {
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
             onClick={() => setOpenImage(null)}
           >
-            <img
-              src={openImage}
-              className="max-h-[90%] rounded-lg"
-            />
+            <img src={openImage} className="max-h-[90%] rounded-lg" />
           </div>
         )}
-        
-        
+
         {typingUsers[selectedUser?._id] ? (
           <div className="text-xs text-gray-400 animate-pulse px-3">
             typing...
           </div>
         ) : null}
-
-
       </div>
 
       <MessageInput />

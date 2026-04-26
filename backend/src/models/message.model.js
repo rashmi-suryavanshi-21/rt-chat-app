@@ -27,11 +27,35 @@ const messageSchema = new mongoose.Schema(
     delivered: {
       type: Boolean,
       default: false,
+    },
+
+    isScheduled: {
+       type: Boolean,
+       default: false 
+    },
+
+     scheduledTime: {
+      type: Date,
+      required: function () {
+        return this.isScheduled;
+      },
+    },
+
+    isSent: {
+      type: Boolean,
+      default: false,
+    },
+
+    sentAt: {
+      type: Date,
     }
 
   },
   { timestamps: true }
 );
+
+messageSchema.index({ isScheduled: 1, isSent: 1, scheduledTime: 1 });
+
 
 const Message = mongoose.model("Message", messageSchema);
 

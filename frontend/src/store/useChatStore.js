@@ -23,7 +23,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get("/messages/users");
 
       const sortedUsers = res.data.sort(
-        (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+        (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0),
       );
 
       set({ users: sortedUsers });
@@ -41,7 +41,7 @@ export const useChatStore = create((set, get) => ({
     const { users } = get();
 
     const filtered = users.filter((user) =>
-      user.fullName?.toLowerCase().includes(query.toLowerCase())
+      user.fullName?.toLowerCase().includes(query.toLowerCase()),
     );
 
     set({ searchedUsers: filtered });
@@ -65,7 +65,7 @@ export const useChatStore = create((set, get) => ({
 
       set((state) => ({
         users: state.users.map((u) =>
-          u._id === userId ? { ...u, unreadCount: 0 } : u
+          u._id === userId ? { ...u, unreadCount: 0 } : u,
         ),
       }));
     } catch (error) {
@@ -86,7 +86,7 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
-        messageData
+        messageData,
       );
 
       set({ messages: [...messages, res.data] });
@@ -107,68 +107,68 @@ export const useChatStore = create((set, get) => ({
     socket.off("typing");
     socket.off("stopTyping");
 
-    // =========================
-    // NEW MESSAGE
-    // =========================
     socket.on("newMessage", (newMessage) => {
-      const { selectedUser } = get();
+  const { selectedUser } = get();
 
-      const isChatOpen =
-        selectedUser &&
-        (newMessage.senderId === selectedUser._id ||
-          newMessage.receiverId === selectedUser._id);
+  const isChatOpen =
+    selectedUser &&
+    (newMessage.senderId === selectedUser._id ||
+      newMessage.receiverId === selectedUser._id);
 
-      if (isChatOpen) {
-        set((state) => ({
-          messages: [...state.messages, newMessage],
-        }));
+  if (isChatOpen) {
+    set((state) => {
+      const exists = state.messages.some(
+        (m) => m._id === newMessage._id
+      );
 
-        socket.emit("markAsRead", {
-          senderId: newMessage.senderId,
-        });
-      }
+      if (exists) return state;
 
-      set((state) => {
-        const updatedUsers = state.users.map((u) => {
-          if (
-            u._id === newMessage.senderId ||
-            u._id === newMessage.receiverId
-          ) {
-            return {
-              ...u,
-              lastMessage: newMessage.text || newMessage.message,
-              updatedAt: newMessage.createdAt || new Date(),
-              unreadCount: isChatOpen ? 0 : (u.unreadCount || 0) + 1,
-            };
-          }
-          return u;
-        });
-
-        updatedUsers.sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
-        );
-
-        return { users: updatedUsers };
-      });
+      return {
+        messages: [...state.messages, newMessage],
+      };
     });
 
-    // =========================
-    // READ RECEIPT
-    // =========================
+    socket.emit("markAsRead", {
+      senderId: newMessage.senderId,
+    });
+  }
+
+  // update sidebar users
+  set((state) => {
+    const updatedUsers = state.users.map((u) => {
+      if (
+        u._id === newMessage.senderId ||
+        u._id === newMessage.receiverId
+      ) {
+        return {
+          ...u,
+          lastMessage: newMessage.text || newMessage.message,
+          updatedAt: newMessage.createdAt || new Date(),
+          unreadCount: isChatOpen ? 0 : (u.unreadCount || 0) + 1,
+        };
+      }
+      return u;
+    });
+
+    updatedUsers.sort(
+      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+    );
+
+    return { users: updatedUsers };
+  });
+});
+
     socket.on("messagesRead", ({ senderId }) => {
       set((state) => ({
         users: state.users.map((u) =>
-          u._id === senderId ? { ...u, unreadCount: 0 } : u
+          u._id === senderId ? { ...u, unreadCount: 0 } : u,
         ),
         messages: state.messages.map((m) =>
-          m.senderId === senderId ? { ...m, isRead: true } : m
+          m.senderId === senderId ? { ...m, isRead: true } : m,
         ),
       }));
     });
 
-    // =========================
-    // TYPING
-    // =========================
     socket.on("typing", ({ senderId }) => {
       set((state) => ({
         typingUsers: {
@@ -186,6 +186,14 @@ export const useChatStore = create((set, get) => ({
         },
       }));
     });
+
+    socket.on("messageSent", (updatedMsg) => {
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === updatedMsg._id ? updatedMsg : m,
+        ),
+      }));
+    });
   },
 
   // =========================
@@ -193,10 +201,13 @@ export const useChatStore = create((set, get) => ({
   // =========================
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
-    socket?.off("newMessage");
-    socket?.off("messagesRead");
-    socket?.off("typing");
-    socket?.off("stopTyping");
+    if (!socket) return;
+
+    socket.off("newMessage");
+    socket.off("messagesRead");
+    socket.off("typing");
+    socket.off("stopTyping");
+    socket.off("messageSent");
   },
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),

@@ -12,6 +12,9 @@ import messageRoutes from "./routes/message.route.js";
 import healthRoutes from "./routes/health.route.js";
 import { app, server } from "./lib/socket.js";
 import userRoutes from "./routes/user.route.js";
+import { startCronJobs } from "./lib/cronJobs.js";
+
+startCronJobs();
 
 // Load environment variables from .env file
 dotenv.config();

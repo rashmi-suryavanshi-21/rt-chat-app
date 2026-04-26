@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { Image, Send, X } from "lucide-react";
+import { Image, Send, X, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
+import axios from "axios";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [showScheduler, setShowScheduler] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState("");
+
   const fileInputRef = useRef(null);
   const { sendMessage } = useChatStore();
   const typingTimeout = useRef(null);
@@ -17,6 +21,8 @@ const MessageInput = () => {
   const [showEmoji, setShowEmoji] = useState(false);
 
   const isTypingRef = useRef(false);
+
+  // ================= IMAGE =================
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file.type.startsWith("image/")) {
@@ -36,14 +42,13 @@ const MessageInput = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // ================= EMOJI =================
   const addEmoji = (emoji) => {
-    const symbol = emoji.native || emoji.shortcodes || "";
+    const symbol = emoji.native || "";
     setText((prev) => prev + symbol);
   };
 
-  const togglePicker = () => {
-    setShowEmoji((prev) => !prev);
-  };
+  // ================= SEND =================
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
@@ -54,7 +59,6 @@ const MessageInput = () => {
         image: imagePreview,
       });
 
-      // Clear form
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -63,42 +67,77 @@ const MessageInput = () => {
     }
   };
 
+  // ================= SCHEDULE =================
+  const handleSchedule = async () => {
+  if (!text.trim() || !scheduledTime) {
+    toast.error("Text and time is required");
+    return;
+  }
+
+  try {
+    const res = await axios.post(
+      "http://localhost:5001/api/messages/schedule",
+      {
+        receiverId: selectedUser._id,
+        text: text.trim(),
+        scheduledTime: new Date(scheduledTime),
+      },
+      {
+        withCredentials: true,
+      }
+    );
+
+   
+    const savedMessage = res.data;
+
+    useChatStore.setState((state) => ({
+      messages: [...state.messages, savedMessage],
+    }));
+
+    toast.success("Message scheduled");
+
+    // clear input
+    setText("");
+    setScheduledTime("");
+    setShowScheduler(false);
+
+  } catch (err) {
+    console.error(err);
+    toast.error("Error scheduling message");
+  }
+};
+
   const handleTyping = (value) => {
     setText(value);
 
     if (!selectedUser?._id || !socket) return;
 
-    // START typing session
     if (value.trim().length > 0 && !isTypingRef.current) {
       socket.emit("typing", {
         receiverId: selectedUser._id,
       });
-
       isTypingRef.current = true;
     }
 
-    // CLEAR old timeout
     clearTimeout(typingTimeout.current);
 
-    // IF input empty → STOP immediately
     if (value.trim().length === 0) {
       socket.emit("stopTyping", {
         receiverId: selectedUser._id,
       });
-
       isTypingRef.current = false;
       return;
     }
 
-    // STOP only after inactivity (NOT every keypress)
     typingTimeout.current = setTimeout(() => {
       socket.emit("stopTyping", {
         receiverId: selectedUser._id,
       });
-
       isTypingRef.current = false;
-    }, 2000); // 
+    }, 2000);
   };
+
+  const now = new Date().toISOString().slice(0, 16);
 
   return (
     <div className="p-4 w-full">
@@ -112,8 +151,7 @@ const MessageInput = () => {
             />
             <button
               onClick={removeImage}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300
-              flex items-center justify-center"
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
               type="button"
             >
               <X className="size-3" />
@@ -129,11 +167,9 @@ const MessageInput = () => {
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
             placeholder="Type a message..."
             value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              handleTyping(e.target.value);
-            }}
+            onChange={(e) => handleTyping(e.target.value)}
           />
+
           <input
             type="file"
             accept="image/*"
@@ -144,13 +180,16 @@ const MessageInput = () => {
 
           <button
             type="button"
-            className={`hidden sm:flex btn btn-circle
-                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
+            className={`hidden sm:flex btn btn-circle ${
+              imagePreview ? "text-emerald-500" : "text-zinc-400"
+            }`}
             onClick={() => fileInputRef.current?.click()}
           >
             <Image size={20} />
           </button>
         </div>
+
+  
         <button
           type="button"
           onClick={() => setShowEmoji((prev) => !prev)}
@@ -158,6 +197,16 @@ const MessageInput = () => {
         >
           😊
         </button>
+
+  
+        <button
+          type="button"
+          onClick={() => setShowScheduler((prev) => !prev)}
+          className="btn btn-circle"
+        >
+          <Clock size={20} />
+        </button>
+
         <button
           type="submit"
           className="btn btn-sm btn-circle"
@@ -165,13 +214,35 @@ const MessageInput = () => {
         >
           <Send size={22} />
         </button>
+
         {showEmoji && (
           <div className="absolute bottom-16 z-50">
             <Picker data={data} onEmojiSelect={addEmoji} />
           </div>
         )}
       </form>
+
+      {/* SCHEDULER UI */}
+      {showScheduler && (
+        <div className="mt-2 flex gap-2">
+          <input
+            type="datetime-local"
+            min={now}
+            value={scheduledTime}
+            onChange={(e) => setScheduledTime(e.target.value)}
+            className="input input-bordered input-sm"
+          />
+
+          <button
+            onClick={handleSchedule}
+            className="btn btn-sm btn-primary"
+          >
+            Confirm
+          </button>
+        </div>
+      )}
     </div>
   );
 };
+
 export default MessageInput;
