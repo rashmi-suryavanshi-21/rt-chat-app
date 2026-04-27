@@ -4,6 +4,7 @@ import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
 
 export const useChatStore = create((set, get) => ({
+
   messages: [],
   users: [],
   searchedUsers: [],
@@ -12,6 +13,32 @@ export const useChatStore = create((set, get) => ({
   isMessagesLoading: false,
   isSearchLoading: false,
   typingUsers: {},
+
+  // =========================
+  // HELPERS
+  // =========================
+  moveUserToTop: (users, userId, msg) => {
+    const index = users.findIndex(
+      (u) => u._id?.toString() === userId?.toString()
+    );
+
+    if (index === -1) return users;
+
+    const user = users[index];
+
+    const updatedUser = {
+      ...user,
+      lastMessage: msg?.text || msg?.message || "",
+      lastMessageId: msg?._id || null,
+      updatedAt: msg?.createdAt || new Date().toISOString(),
+    };
+
+    const newUsers = [...users];
+    newUsers.splice(index, 1);
+    newUsers.unshift(updatedUser);
+
+    return newUsers;
+  },
 
   // =========================
   // GET USERS
@@ -23,7 +50,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get("/messages/users");
 
       const sortedUsers = res.data.sort(
-        (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0),
+        (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
       );
 
       set({ users: sortedUsers });
@@ -41,7 +68,7 @@ export const useChatStore = create((set, get) => ({
     const { users } = get();
 
     const filtered = users.filter((user) =>
-      user.fullName?.toLowerCase().includes(query.toLowerCase()),
+      user.fullName?.toLowerCase().includes(query.toLowerCase())
     );
 
     set({ searchedUsers: filtered });
@@ -65,7 +92,7 @@ export const useChatStore = create((set, get) => ({
 
       set((state) => ({
         users: state.users.map((u) =>
-          u._id === userId ? { ...u, unreadCount: 0 } : u,
+          u._id === userId ? { ...u, unreadCount: 0 } : u
         ),
       }));
     } catch (error) {
@@ -79,135 +106,175 @@ export const useChatStore = create((set, get) => ({
   // SEND MESSAGE
   // =========================
   sendMessage: async (messageData) => {
-    const { selectedUser, messages } = get();
+    const { selectedUser } = get();
 
     if (!selectedUser) return;
 
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
-        messageData,
+        messageData
       );
 
-      set({ messages: [...messages, res.data] });
+      set((state) => {
+        const exists = state.messages.some(
+          (m) => m._id === res.data._id
+        );
+
+        if (exists) return state;
+
+        return {
+          messages: [...state.messages, res.data],
+          users: get().moveUserToTop(state.users, selectedUser._id, res.data),
+        };
+      });
+
     } catch (error) {
+      console.error(error);
       toast.error(error.response?.data?.message || "Error sending message");
     }
   },
 
   // =========================
-  // SOCKET LISTENERS
+  // DELETE MESSAGE (FIXED)
+  // =========================
+ deleteMessage: async (id) => {
+  try {
+    await axiosInstance.delete(`/messages/delete/${id}`);
+
+    set((state) => {
+      const updatedMessages = state.messages.map((m) =>
+        m._id === id
+          ? { ...m, isDeleted: true, text: "This message was deleted" }
+          : m
+      );
+
+      return {
+        messages: updatedMessages,
+
+        users: state.users.map((u) =>
+          u.lastMessageId === id
+            ? {
+                ...u,
+                lastMessage: "This message was deleted",
+              }
+            : u
+        ),
+      };
+    });
+
+  } catch (error) {
+    toast.error("Delete failed");
+  }
+},
+  // =========================
+  // UPDATE MESSAGE
+  // =========================
+  updateMessage: async (id, text) => {
+    try {
+      await axiosInstance.put(`/messages/update/${id}`, { text });
+
+      set({
+        messages: get().messages.map((m) =>
+          m._id === id ? { ...m, text } : m
+        ),
+      });
+
+    } catch {
+      toast.error("Update failed");
+    }
+  },
+
+  // =========================
+  // SOCKET (FIXED DUPLICATES)
   // =========================
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
     socket.off("newMessage");
-    socket.off("messagesRead");
-    socket.off("typing");
-    socket.off("stopTyping");
 
     socket.on("newMessage", (newMessage) => {
-  const { selectedUser } = get();
+      const { selectedUser } = get();
+      const myId = useAuthStore.getState().authUser?._id?.toString();
 
-  const isChatOpen =
-    selectedUser &&
-    (newMessage.senderId === selectedUser._id ||
-      newMessage.receiverId === selectedUser._id);
+      const isChatOpen =
+        selectedUser &&
+        (newMessage.senderId?.toString() === selectedUser._id?.toString() ||
+          newMessage.receiverId?.toString() === selectedUser._id?.toString());
 
-  if (isChatOpen) {
-    set((state) => {
-      const exists = state.messages.some(
-        (m) => m._id === newMessage._id
-      );
+      // CHAT OPEN → add message once only
+      if (isChatOpen) {
+        set((state) => {
+          const exists = state.messages.some(
+            (m) => m._id === newMessage._id
+          );
 
-      if (exists) return state;
+          if (exists) return state;
 
-      return {
-        messages: [...state.messages, newMessage],
-      };
-    });
+          return {
+            messages: [...state.messages, newMessage],
+          };
+        });
 
-    socket.emit("markAsRead", {
-      senderId: newMessage.senderId,
-    });
-  }
-
-  // update sidebar users
-  set((state) => {
-    const updatedUsers = state.users.map((u) => {
-      if (
-        u._id === newMessage.senderId ||
-        u._id === newMessage.receiverId
-      ) {
-        return {
-          ...u,
-          lastMessage: newMessage.text || newMessage.message,
-          updatedAt: newMessage.createdAt || new Date(),
-          unreadCount: isChatOpen ? 0 : (u.unreadCount || 0) + 1,
-        };
+        socket.emit("markAsRead", {
+          senderId: newMessage.senderId,
+        });
       }
-      return u;
+
+      // SIDEBAR UPDATE
+      set((state) => {
+        const users = [...state.users];
+
+        const otherUserId =
+          newMessage.senderId?.toString() === myId
+            ? newMessage.receiverId?.toString()
+            : newMessage.senderId?.toString();
+
+        const index = users.findIndex(
+          (u) => u._id?.toString() === otherUserId
+        );
+
+        if (index === -1) return state;
+
+        const user = users[index];
+
+        const updatedUser = {
+          ...user,
+          lastMessage: newMessage.text || "",
+          lastMessageId: newMessage._id,
+          updatedAt: newMessage.createdAt || new Date().toISOString(),
+          unreadCount: isChatOpen
+            ? 0
+            : (user.unreadCount || 0) + 1,
+        };
+
+        users.splice(index, 1);
+        users.unshift(updatedUser);
+
+        return { users };
+      });
     });
 
-    updatedUsers.sort(
-      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
-    );
-
-    return { users: updatedUsers };
-  });
-});
-
+    socket.off("messagesRead");
     socket.on("messagesRead", ({ senderId }) => {
       set((state) => ({
         users: state.users.map((u) =>
-          u._id === senderId ? { ...u, unreadCount: 0 } : u,
+          u._id === senderId ? { ...u, unreadCount: 0 } : u
         ),
         messages: state.messages.map((m) =>
-          m.senderId === senderId ? { ...m, isRead: true } : m,
-        ),
-      }));
-    });
-
-    socket.on("typing", ({ senderId }) => {
-      set((state) => ({
-        typingUsers: {
-          ...state.typingUsers,
-          [senderId]: true,
-        },
-      }));
-    });
-
-    socket.on("stopTyping", ({ senderId }) => {
-      set((state) => ({
-        typingUsers: {
-          ...state.typingUsers,
-          [senderId]: false,
-        },
-      }));
-    });
-
-    socket.on("messageSent", (updatedMsg) => {
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === updatedMsg._id ? updatedMsg : m,
+          m.senderId === senderId ? { ...m, isRead: true } : m
         ),
       }));
     });
   },
 
-  // =========================
-  // UNSUBSCRIBE
-  // =========================
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
     socket.off("newMessage");
     socket.off("messagesRead");
-    socket.off("typing");
-    socket.off("stopTyping");
-    socket.off("messageSent");
   },
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),

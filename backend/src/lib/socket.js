@@ -84,6 +84,27 @@ io.on("connection", (socket) => {
     }
   });
 
+   socket.on("deleteMessage", ({ messageId, receiverId }) => {
+    const receiverSocketId = userSocketMap[receiverId];
+
+    if (!receiverSocketId) return;
+
+    io.to(receiverSocketId).emit("messageDeleted", {
+      messageId,
+    });
+  });
+
+  // =========================
+  // UPDATE MESSAGE (REALTIME)
+  // =========================
+  socket.on("updateMessage", ({ message, receiverId }) => {
+    const receiverSocketId = userSocketMap[receiverId];
+
+    if (!receiverSocketId) return;
+
+    io.to(receiverSocketId).emit("messageUpdated", message);
+  });
+
   // =========================
   // DISCONNECT
   // =========================

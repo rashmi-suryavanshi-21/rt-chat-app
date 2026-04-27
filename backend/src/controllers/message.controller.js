@@ -14,37 +14,54 @@ export const getUsersForSidebar = async (req, res) => {
       _id: { $ne: loggedInUserId },
     }).select("-password");
 
-    const usersWithData = await Promise.all(
+    const usersWithLastMsg = await Promise.all(
       users.map(async (user) => {
+        const lastMsg = await Message.findOne({
+          $or: [
+            { senderId: loggedInUserId, receiverId: user._id },
+            { senderId: user._id, receiverId: loggedInUserId },
+          ],
+        })
+          .sort({ createdAt: -1 })
+          .lean();
 
-        // ✅ unread count
         const unreadCount = await Message.countDocuments({
           senderId: user._id,
           receiverId: loggedInUserId,
           isRead: false,
         });
 
-        // ✅ LAST MESSAGE (MOST IMPORTANT FIX)
-        const lastMsg = await Message.findOne({
-          $or: [
-            { senderId: loggedInUserId, receiverId: user._id },
-            { senderId: user._id, receiverId: loggedInUserId },
-          ],
-        }).sort({ createdAt: -1 });
+        // 🔥 SAFE LAST MESSAGE LOGIC (IMPORTANT FIX)
+        let lastMessageText = null;
+        if (!lastMsg) {
+          lastMessageText = "No messages yet";
+        } else if (lastMsg.isDeleted) {
+          lastMessageText = "deleted";
+        } else if (lastMsg.text && lastMsg.text.trim() !== "") {
+          lastMessageText = lastMsg.text;
+        } else {
+          lastMessageText = "No messages yet";
+        }
 
         return {
           ...user.toObject(),
+          lastMessage: lastMessageText,
+          lastMessageId: lastMsg?._id || null,
+          updatedAt: lastMsg?.createdAt || user.createdAt,
           unreadCount,
-          lastMessage: lastMsg?.text || "", // 👈 yahi magic hai
         };
-      })
+      }),
     );
 
-    res.status(200).json(usersWithData);
+    // 🔥 SORT BY RECENT ACTIVITY
+    usersWithLastMsg.sort(
+      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
+    );
 
+    res.status(200).json(usersWithLastMsg);
   } catch (error) {
-    console.log("Error in getUsersForSidebar:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error fetching users:", error);
+    res.status(500).json({ error: "Server error" });
   }
 };
 // =========================
@@ -62,7 +79,7 @@ export const getMessages = async (req, res) => {
         receiverId: myId,
         isRead: false,
       },
-      { isRead: true }
+      { isRead: true },
     );
 
     const messages = await Message.find({
@@ -158,7 +175,7 @@ export const markMessagesAsRead = async (req, res) => {
         receiverId,
         isRead: false,
       },
-      { isRead: true }
+      { isRead: true },
     );
 
     const senderSocketId = getReceiverSocketId(senderId);
@@ -194,5 +211,73 @@ export const scheduleMessage = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error scheduling message" });
+  }
+};
+
+// DELETE MESSAGE
+export const deleteMessage = async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.id);
+
+    if (!message) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    if (message.senderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    // 🔥 mark as deleted (DO NOT trust empty text only)
+    message.isDeleted = true;
+    message.text = "This message was deleted";
+    await message.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Message deleted successfully",
+      deletedMessageId: message._id,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+// UPDATE MESSAGE
+export const updateMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: "Text is required" });
+    }
+
+    const message = await Message.findById(id);
+
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+    if (message.senderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    //update
+    message.text = text.trim();
+    message.isEdited = true;
+
+    await message.save();
+
+    // 🔥 REALTIME (IMPORTANT)
+    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageUpdated", message);
+    }
+
+    res.status(200).json(message);
+  } catch (err) {
+    console.error("Update error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 };

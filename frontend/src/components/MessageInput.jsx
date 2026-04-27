@@ -7,20 +7,28 @@ import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import axios from "axios";
 
-const MessageInput = () => {
+const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [showScheduler, setShowScheduler] = useState(false);
   const [scheduledTime, setScheduledTime] = useState("");
 
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const { sendMessage, updateMessage } = useChatStore(); // 🔥 added
   const typingTimeout = useRef(null);
   const { selectedUser } = useChatStore();
   const { socket } = useAuthStore();
   const [showEmoji, setShowEmoji] = useState(false);
 
   const isTypingRef = useRef(false);
+
+  // 🔥 EDIT MODE SYNC
+  useEffect(() => {
+    if (editingMsg) {
+      setText(editingMsg.text || "");
+      setImagePreview(null); // optional: image edit disabled
+    }
+  }, [editingMsg]);
 
   // ================= IMAGE =================
   const handleImageChange = (e) => {
@@ -48,65 +56,71 @@ const MessageInput = () => {
     setText((prev) => prev + symbol);
   };
 
-  // ================= SEND =================
+  // ================= SEND / EDIT =================
   const handleSendMessage = async (e) => {
     e.preventDefault();
+
     if (!text.trim() && !imagePreview) return;
 
     try {
-      await sendMessage({
-        text: text.trim(),
-        image: imagePreview,
-      });
+      if (editingMsg) {
+        // 🔥 EDIT MODE
+        await updateMessage(editingMsg._id, text.trim());
+        setEditingMsg(null);
+      } else {
+        // NORMAL SEND
+        await sendMessage({
+          text: text.trim(),
+          image: imagePreview,
+        });
+      }
 
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error("Failed:", error);
     }
   };
 
   // ================= SCHEDULE =================
   const handleSchedule = async () => {
-  if (!text.trim() || !scheduledTime) {
-    toast.error("Text and time is required");
-    return;
-  }
+    if (!text.trim() || !scheduledTime) {
+      toast.error("Text and time is required");
+      return;
+    }
 
-  try {
-    const res = await axios.post(
-      "http://localhost:5001/api/messages/schedule",
-      {
-        receiverId: selectedUser._id,
-        text: text.trim(),
-        scheduledTime: new Date(scheduledTime),
-      },
-      {
-        withCredentials: true,
-      }
-    );
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/messages/schedule",
+        {
+          receiverId: selectedUser._id,
+          text: text.trim(),
+          scheduledTime: new Date(scheduledTime),
+        },
+        {
+          withCredentials: true,
+        }
+      );
 
-   
-    const savedMessage = res.data;
+      const savedMessage = res.data;
 
-    useChatStore.setState((state) => ({
-      messages: [...state.messages, savedMessage],
-    }));
+      useChatStore.setState((state) => ({
+        messages: [...state.messages, savedMessage],
+      }));
 
-    toast.success("Message scheduled");
+      toast.success("Message scheduled");
 
-    // clear input
-    setText("");
-    setScheduledTime("");
-    setShowScheduler(false);
+      setText("");
+      setScheduledTime("");
+      setShowScheduler(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Error scheduling message");
+    }
+  };
 
-  } catch (err) {
-    console.error(err);
-    toast.error("Error scheduling message");
-  }
-};
-
+  // ================= TYPING =================
   const handleTyping = (value) => {
     setText(value);
 
@@ -139,8 +153,19 @@ const MessageInput = () => {
 
   const now = new Date().toISOString().slice(0, 16);
 
+ 
+
   return (
     <div className="p-4 w-full">
+      
+      {/* 🔥 EDIT MODE UI */}
+      {editingMsg && (
+        <div className="mb-2 text-xs text-blue-400 flex justify-between items-center">
+          Editing message...
+          <button onClick={() => setEditingMsg(null)}>Cancel</button>
+        </div>
+      )}
+
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
@@ -189,7 +214,6 @@ const MessageInput = () => {
           </button>
         </div>
 
-  
         <button
           type="button"
           onClick={() => setShowEmoji((prev) => !prev)}
@@ -198,7 +222,6 @@ const MessageInput = () => {
           😊
         </button>
 
-  
         <button
           type="button"
           onClick={() => setShowScheduler((prev) => !prev)}
@@ -222,7 +245,6 @@ const MessageInput = () => {
         )}
       </form>
 
-      {/* SCHEDULER UI */}
       {showScheduler && (
         <div className="mt-2 flex gap-2">
           <input

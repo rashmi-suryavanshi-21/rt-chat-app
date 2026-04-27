@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Ban } from "lucide-react";
 import SearchUser from "./SearchUser";
 import Avatar from "./Avatar";
 
@@ -31,7 +31,9 @@ const Sidebar = () => {
 
   const q = query.toLowerCase();
 
-  // 🔥 HIGHLIGHT FUNCTION
+  // =========================
+  // HIGHLIGHT FUNCTION
+  // =========================
   const highlight = (text) => {
     if (!query) return text;
 
@@ -39,10 +41,7 @@ const Sidebar = () => {
 
     return text.split(regex).map((part, i) =>
       part.toLowerCase() === query.toLowerCase() ? (
-        <span
-          key={i}
-          className="bg-yellow-300 text-black px-1 rounded"
-        >
+        <span key={i} className="bg-yellow-300 text-black px-1 rounded">
           {part}
         </span>
       ) : (
@@ -51,7 +50,9 @@ const Sidebar = () => {
     );
   };
 
-  // ✅ FILTER + PRIORITY SORT
+  // =========================
+  // FILTER + SORT
+  // =========================
   const displayUsers = (users || [])
     .filter((user) =>
       user.username?.toLowerCase().includes(q) ||
@@ -59,10 +60,7 @@ const Sidebar = () => {
     )
     .sort((a, b) => {
       if (!q) {
-        return (
-          new Date(b.updatedAt || 0) -
-          new Date(a.updatedAt || 0)
-        );
+        return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
       }
 
       const aName = (a.username + " " + (a.fullName || "")).toLowerCase();
@@ -73,11 +71,6 @@ const Sidebar = () => {
 
       if (aStarts && !bStarts) return -1;
       if (!aStarts && bStarts) return 1;
-
-      const aIndex = aName.indexOf(q);
-      const bIndex = bName.indexOf(q);
-
-      if (aIndex !== bIndex) return aIndex - bIndex;
 
       return aName.localeCompare(bName);
     });
@@ -91,29 +84,21 @@ const Sidebar = () => {
         Chats
       </div>
 
-      {/* 🔍 SEARCH */}
+      {/* SEARCH */}
       <SearchUser onSearch={setQuery} />
 
-      {/* 👇 SINGLE LIST */}
+      {/* LIST */}
       <div className="p-2 space-y-2">
         {displayUsers.map((user) => {
           const isOnline = onlineUsers?.includes(user._id);
-          const isActiveChat =
-            currentChatUser?._id === user._id;
-
-          const unreadCount = isActiveChat
-            ? 0
-            : user.unreadCount || 0;
+          const isActiveChat = currentChatUser?._id === user._id;
+          const unreadCount = isActiveChat ? 0 : user.unreadCount || 0;
 
           return (
             <div
               key={user._id}
               onClick={() => setSelectedUser(user)}
-              className={`
-                flex items-center gap-3 p-3 rounded-lg cursor-pointer
-                hover:bg-base-200 transition
-                ${isActiveChat ? "bg-base-200" : ""}
-              `}
+              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-base-200 transition ${isActiveChat ? "bg-base-200" : ""}`}
             >
               {/* Avatar */}
               <Avatar
@@ -122,11 +107,11 @@ const Sidebar = () => {
                 isOnline={isOnline}
               />
 
-              {/* Info */}
+              {/* INFO */}
               <div className="flex-1">
                 <div className="flex justify-between items-center">
                   <p className="font-medium">
-                    {highlight( user.username ||user.fullName)}
+                    {highlight(user.username || user.fullName)}
                   </p>
 
                   {unreadCount > 0 && (
@@ -136,14 +121,23 @@ const Sidebar = () => {
                   )}
                 </div>
 
+                {/* 🔥 LAST MESSAGE FIX */}
                 <p className="text-xs text-base-content/60 truncate">
                   {typingUsers?.[user._id] ? (
                     <span className="text-blue-400 animate-pulse">
                       typing...
                     </span>
-                  ) : (user.lastMessage || "No messages yet").length > 15
-                    ? (user.lastMessage || "No messages yet").slice(0, 15) + "..."
-                    : (user.lastMessage || "No messages yet")}
+                  ) : user.lastMessage === "deleted" ? (
+                    <span className="italic text-gray-400 flex items-center gap-1">
+                      <Ban className="w-3 h-3 text-gray-400" /> deleted
+                    </span>
+                  ) : user.lastMessage ? (
+                    user.lastMessage.length > 15
+                      ? user.lastMessage.slice(0, 15) + "..."
+                      : user.lastMessage
+                  ) : (
+                    "No messages yet"
+                  )}
                 </p>
               </div>
             </div>

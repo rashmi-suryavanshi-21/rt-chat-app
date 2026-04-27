@@ -30,11 +30,11 @@ const messageSchema = new mongoose.Schema(
     },
 
     isScheduled: {
-       type: Boolean,
-       default: false 
+      type: Boolean,
+      default: false,
     },
 
-     scheduledTime: {
+    scheduledTime: {
       type: Date,
       required: function () {
         return this.isScheduled;
@@ -48,10 +48,19 @@ const messageSchema = new mongoose.Schema(
 
     sentAt: {
       type: Date,
-    }
+    },
 
+    edited: {
+      type: Boolean,
+      default: false,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 messageSchema.index({ isScheduled: 1, isSent: 1, scheduledTime: 1 });

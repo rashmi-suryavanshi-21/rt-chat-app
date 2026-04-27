@@ -12,6 +12,10 @@ const ChatContainer = () => {
   const [openImage, setOpenImage] = useState(null);
   const [message, setMessage] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
+
+  const [menu, setMenu] = useState(null);
+  const [editingMsg, setEditingMsg] = useState(null); // 🔥 edit state
+
   const {
     messages,
     getMessages,
@@ -24,32 +28,30 @@ const ChatContainer = () => {
 
   const { authUser, socket } = useAuthStore();
   const messageEndRef = useRef(null);
-  // =========================
-  // LOAD CHAT
-  // =========================
+
   useEffect(() => {
     if (!selectedUser?._id) return;
 
     getMessages(selectedUser._id);
-    subscribeToMessages();
+
+    if (typeof subscribeToMessages === "function") {
+      subscribeToMessages();
+    }
 
     return () => {
-      unsubscribeFromMessages();
+      if (typeof unsubscribeFromMessages === "function") {
+        unsubscribeFromMessages();
+      }
     };
   }, [selectedUser?._id]);
 
-  // =========================
-  // AUTO SCROLL
-  // =========================
   useEffect(() => {
+    console.log("MESSAGES ARRAY:", messages);
     messageEndRef.current?.scrollIntoView({
       behavior: "smooth",
     });
   }, [messages]);
 
-  // =========================
-  // MARK AS READ
-  // =========================
   useEffect(() => {
     if (!selectedUser?._id || !socket?.connected) return;
 
@@ -62,9 +64,12 @@ const ChatContainer = () => {
     return () => clearTimeout(timer);
   }, [selectedUser?._id, socket?.connected]);
 
-  // =========================
-  // LOADING
-  // =========================
+  useEffect(() => {
+    const close = () => setMenu(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, []);
+
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
@@ -78,9 +83,6 @@ const ChatContainer = () => {
   const isTyping =
     selectedUser?._id && typingUsers?.[selectedUser._id];
 
-  // =========================
-  // UI
-  // =========================
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
@@ -90,11 +92,22 @@ const ChatContainer = () => {
           <div
             key={message._id}
             ref={index === messages.length - 1 ? messageEndRef : null}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"
-              }`}
-          >
+            className={`chat ${
+              message.senderId === authUser._id ? "chat-end" : "chat-start"
+            }`}
+            onContextMenu={(e) => {
+              if (message.senderId !== authUser._id || message.isDeleted)
+                return;
 
-            {/* Avatar */}
+              e.preventDefault();
+
+              setMenu({
+                x: e.pageX,
+                y: e.pageY,
+                message,
+              });
+            }}
+          >
             <div className="chat-image avatar">
               <Avatar
                 src={
@@ -106,7 +119,6 @@ const ChatContainer = () => {
               />
             </div>
 
-            {/* Time */}
             <div className="chat-header mb-1">
               <time className="text-xs opacity-50 ml-1">
                 {formatMessageTime(
@@ -117,7 +129,6 @@ const ChatContainer = () => {
               </time>
             </div>
 
-            {/* Bubble */}
             <div className="chat-bubble flex flex-col">
               {message.image && (
                 <img
@@ -127,7 +138,14 @@ const ChatContainer = () => {
                 />
               )}
 
-              {message.text && <p>{message.text}</p>}
+              {/* Deleted */}
+              {message.isDeleted ? (
+                <p className="text-gray-400 italic text-sm">
+                  This message was deleted
+                </p>
+              ) : (
+                message.text && <p>{message.text}</p>
+              )}
 
               {message.isScheduled && !message.isSent && (
                 <div className="text-xs text-gray-400 mt-1">
@@ -136,11 +154,13 @@ const ChatContainer = () => {
                 </div>
               )}
 
-              {/* Read Receipt */}
+              {/* Ticks */}
               {message.senderId === authUser._id && (
                 <div className="flex justify-end mt-1">
                   {message.isScheduled && !message.isSent ? (
                     <Clock className="size-4 text-yellow-500" />
+                  ) : message.isDeleted ? (
+                    <Check className="size-4 text-gray-400" />
                   ) : message.isRead ? (
                     <CheckCheck className="size-4 text-blue-500" />
                   ) : (
@@ -152,6 +172,47 @@ const ChatContainer = () => {
           </div>
         ))}
 
+        {/* 🔥 MENU */}
+        {menu && (
+          <div
+            style={{
+              position: "fixed",
+              top: Math.min(menu.y, window.innerHeight - 120),
+              left: Math.min(menu.x, window.innerWidth - 150),
+              background: "#1f1f1f",
+              border: "1px solid #333",
+              borderRadius: "8px",
+              padding: "6px 0",
+              zIndex: 9999,
+              minWidth: "120px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            }}
+          >
+            {/* DELETE */}
+            <div
+              className="px-4 py-2 text-sm hover:bg-red-500/20 text-red-400 cursor-pointer"
+              onClick={() => {
+                if (!menu?.message?._id) return;
+                useChatStore.getState().deleteMessage(menu.message._id);
+                setMenu(null);
+              }}
+            >
+              Delete
+            </div>
+
+            {/* 🔥 EDIT FIX */}
+            <div
+              className="px-4 py-2 text-sm hover:bg-blue-500/20 text-blue-400 cursor-pointer"
+              onClick={() => {
+                setEditingMsg(menu.message); // ✅ main fix
+                setMenu(null);
+              }}
+            >
+              Edit
+            </div>
+          </div>
+        )}
+
         {/* Image Modal */}
         {openImage && (
           <div
@@ -162,14 +223,16 @@ const ChatContainer = () => {
           </div>
         )}
 
-        {typingUsers[selectedUser?._id] ? (
+        {/* Typing */}
+        {isTyping && (
           <div className="text-xs text-gray-400 animate-pulse px-3">
             typing...
           </div>
-        ) : null}
+        )}
       </div>
 
-      <MessageInput />
+      {/* 🔥 IMPORTANT */}
+      <MessageInput editingMsg={editingMsg} setEditingMsg={setEditingMsg} />
     </div>
   );
 };
