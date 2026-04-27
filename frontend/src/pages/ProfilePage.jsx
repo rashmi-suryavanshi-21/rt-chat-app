@@ -8,6 +8,7 @@ const ProfilePage = () => {
   const [selectedImg, setSelectedImg] = useState(null);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bio, setBio] = useState(authUser?.bio || "");
+  const [showImage, setShowImage] = useState(false);
   const navigate = useNavigate();
 
   const handleBioSave = async () => {
@@ -54,16 +55,17 @@ const ProfilePage = () => {
           {/* avatar upload section */}
 
           <div className="flex flex-col items-center gap-4">
-            <div className="relative">
+            <div className="relative cursor-pointer">
               {selectedImg || authUser.profilePic ? (
                 <img
                   src={selectedImg || authUser.profilePic}
                   alt="Profile"
-                  className="size-32 rounded-full object-cover border-2 border-primary"
+                  onClick={() => setShowImage(true)}
+                  className="w-40 h-40 rounded-full object-cover border-4 border-primary hover:scale-105 transition"
                 />
               ) : (
-                <div className="size-32 rounded-full bg-base-300 flex items-center justify-center border-2 border-primary">
-                  <User className="size-12 text-base-content/50" />
+                <div className="w-40 h-40 rounded-full bg-base-300 flex items-center justify-center border-4 border-primary">
+                  <User className="w-14 h-14 text-base-content/50" />
                 </div>
               )}
 
@@ -88,6 +90,20 @@ const ProfilePage = () => {
                 />
               </label>
             </div>
+            {showImage && (
+              <div
+                className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+                onClick={() => setShowImage(false)}
+              >
+                <div className="w-screen h-screen flex items-center justify-center">
+                  <img
+                    src={selectedImg || authUser.profilePic}
+                    className="w-auto h-auto max-w-none max-h-none"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              </div>
+            )}
             <p className="text-sm text-zinc-400">
               {isUpdatingProfile ? "Uploading..." : "Click the camera icon to update your photo"}
             </p>

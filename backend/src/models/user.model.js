@@ -36,7 +36,11 @@ const userSchema = new mongoose.Schema(
 );
 
 // 🔥 TEXT INDEX FOR SEARCH (IMPORTANT)
-userSchema.index({ fullName: "text", email: "text" });
+userSchema.index({
+  fullName: "text",
+  username: "text",
+  email: "text",
+});;
 
 const User = mongoose.model("User", userSchema);
 

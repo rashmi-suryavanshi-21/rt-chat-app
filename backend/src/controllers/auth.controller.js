@@ -2,33 +2,47 @@ import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
+import { generateUniqueUsername } from "../lib/username.js";
 
-const generateUsername = (name) => {
-  return (
-    name.toLowerCase().replace(/\s+/g, "") +
-    Math.floor(1000 + Math.random() * 9000)
-  );
-};
+export const suggestUsernames = async (req, res) => {
+  try {
+    const { fullName } = req.body;
 
-const generateUniqueUsername = async (name) => {
-  let username;
-  let isTaken = true;
-
-  while (isTaken) {
-    username = generateUsername(name);
-
-    const user = await User.findOne({ username });
-    if (!user) {
-      isTaken = false; // mil gaya unique
+    if (!fullName) {
+      return res.status(400).json({ message: "fullName required" });
     }
+
+    const generateUsername = (name) => {
+      return (
+        name.toLowerCase().replace(/\s+/g, "") +
+        Math.floor(1000 + Math.random() * 9000)
+      );
+    };
+
+    const suggestions = new Set();
+
+    while (suggestions.size < 5) {
+      const username = generateUsername(fullName);
+
+      const exists = await User.findOne({ username });
+
+      if (!exists) {
+        suggestions.add(username);
+      }
+    }
+
+    res.status(200).json({
+      suggestions: Array.from(suggestions),
+    });
+
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-
-  return username;
 };
-
 
 export const signup = async (req, res) => {
-  let { fullName, username, email, password } = req.body; // ✅ let instead of const
+  let { fullName, email, password } = req.body; // ✅ let instead of const
 
   try {
     if (!fullName || !email || !password) {
@@ -39,23 +53,14 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    // 🔥 username handling
-    if (!username || username.trim() === "") {
-      username = await generateUniqueUsername(fullName);
-    } else {
-      username = username.toLowerCase().trim();
-
-      const existingUser = await User.findOne({ username });
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already taken" });
-      }
-    }
-
+    
     // 🔴 check email
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
       return res.status(400).json({ message: "Email already exists" });
     }
+    
+    const username = await generateUniqueUsername(fullName);
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -76,6 +81,7 @@ export const signup = async (req, res) => {
       email: newUser.email,
       username: newUser.username,
       profilePic: newUser.profilePic,
+      bio: newUser.bio,
     });
 
   } catch (error) {
@@ -111,6 +117,7 @@ export const login = async (req, res) => {
       email: user.email,
       username: user.username,
       profilePic: user.profilePic,
+      bio: user.bio, 
     });
 
   } catch (error) {
@@ -129,28 +136,6 @@ export const logout = (req, res) => {
   }
 };
 
-// export const updateProfile = async (req, res) => {
-//   try {
-//     const { profilePic } = req.body;
-//     const userId = req.user._id;
-
-//     if (!profilePic) {
-//       return res.status(400).json({ message: "Profile pic is required" });
-//     }
-
-//     const uploadResponse = await cloudinary.uploader.upload(profilePic);
-//     const updatedUser = await User.findByIdAndUpdate(
-//       userId,
-//       { profilePic: uploadResponse.secure_url },
-//       { new: true }
-//     );
-
-//     res.status(200).json(updatedUser);
-//   } catch (error) {
-//     console.log("error in update profile:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
 export const updateProfile = async (req, res) => {
   try {
     const { profilePic, bio } = req.body; // ✅ added bio
@@ -195,3 +180,4 @@ export const checkAuth = (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+

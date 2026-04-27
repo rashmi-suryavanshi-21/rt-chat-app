@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
+import { useState, useRef, useEffect } from "react";
 import {
   Eye,
   EyeOff,
@@ -11,18 +11,33 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { use } from "react";
+import axios from "axios";
 
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
-
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     password: "",
     username: "",
   });
+  const usernameRef = useRef(null);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (usernameRef.current && !usernameRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   const { signup, isSigningUp } = useAuthStore();
 
   const validateForm = () => {
@@ -42,6 +57,19 @@ const SignUpPage = () => {
       return toast.error("Password must be at least 6 characters");
 
     return true;
+  };
+
+  const getSuggestions = async (fullName) => {
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/auth/suggest-usernames",
+        { fullName }
+      );
+
+      setSuggestions(res.data.suggestions);
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -109,14 +137,20 @@ const SignUpPage = () => {
                   className="input input-bordered w-full pl-10"
                   placeholder="John Doe"
                   value={formData.fullName}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
+
                     setFormData({
                       ...formData,
-                      fullName: e.target.value,
-                    })
-                  }
+                      fullName: value,
+                    });
+
+                    setSuggestions([]);        // 🔥 clear old suggestions
+                    setShowSuggestions(false); // 🔥 hide dropdown
+                  }}
                 />
               </div>
+
             </div>
 
             {/* Email */}
@@ -145,7 +179,7 @@ const SignUpPage = () => {
               </div>
             </div>
             {/* Username */}
-            <div className="form-control">
+            <div ref={usernameRef} className="form-control">
               <label className="label">
                 <span className="label-text font-medium">
                   Username
@@ -160,6 +194,13 @@ const SignUpPage = () => {
                   className="input input-bordered w-full pl-10"
                   placeholder="your_username"
                   value={formData.username}
+                  onClick={async () => {
+                    setShowSuggestions(true);
+
+                    if (formData.fullName.trim().length >2) {
+                      await getSuggestions(formData.fullName);
+                    }
+                  }}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -168,6 +209,26 @@ const SignUpPage = () => {
                   }
                 />
               </div>
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {suggestions.map((u, i) => (
+                    <span
+                      key={i}
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          username: u,
+                        }));
+
+                        setShowSuggestions(false); // hide after select
+                      }}
+                      className="cursor-pointer bg-base-200 px-3 py-1 rounded-full text-sm hover:bg-primary hover:text-white"
+                    >
+                      @{u}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             {/* Password */}
             <div className="form-control">
