@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { LogOut, MessageSquare, Settings, Palette } from "lucide-react";
-
+import { User } from "lucide-react";
+import Avatar from "./Avatar";
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
 
@@ -47,24 +48,22 @@ const Navbar = () => {
                 "
               >
                 <div className="relative">
-                  <img
-                    src={authUser?.profilePic || "/avatar.png"}
-                    alt="profile"
-                    className="w-9 h-9 rounded-full object-cover"
-                  />
+                  <div className="relative">
+                    <Avatar src={authUser?.profilePic} size="w-9 h-9" />
 
-                  {/* Online Dot */}
-                  <span
-                    className="
+                    {/* Online Dot */}
+                    <span
+                      className="
                     absolute bottom-0 right-0
                     w-3 h-3
-                    bg-green-500
+                   bg-green-500
                     rounded-full
                     border-2 border-base-100
                     "
-                  />
-                </div>
+                    />
+                  </div>
 
+                </div>
                 <span className="hidden sm:inline font-medium">
                   {authUser?.fullName}
                 </span>

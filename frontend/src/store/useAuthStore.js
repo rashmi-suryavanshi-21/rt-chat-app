@@ -36,7 +36,13 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Account created successfully");
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      // toast.error(error.response.data.message);
+      console.log("Signup error:", error);
+
+  const message =
+    error?.response?.data?.message || "Something went wrong";
+
+  console.error(message);
     } finally {
       set({ isSigningUp: false });
     }
@@ -51,7 +57,7 @@ export const useAuthStore = create((set, get) => ({
 
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || error.message);
     } finally {
       set({ isLoggingIn: false });
     }
@@ -73,7 +79,13 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.put("/auth/update-profile", data);
       set({ authUser: res.data });
-      toast.success("Profile updated successfully");
+      if (data.profilePic) {
+        toast.success("Profile picture updated");
+      } else if (data.bio !== undefined) {
+        toast.success("Bio updated");
+      } else {
+        toast.success("Profile updated successfully");
+      }
     } catch (error) {
       console.log("error in update profile:", error);
       toast.error(error.response.data.message);
@@ -83,37 +95,37 @@ export const useAuthStore = create((set, get) => ({
   },
 
   connectSocket: () => {
-  const { authUser, socket } = get();
+    const { authUser, socket } = get();
 
-  if (!authUser) return;
+    if (!authUser) return;
 
-  // avoid multiple sockets
-  if (socket && socket.connected) return;
+    // avoid multiple sockets
+    if (socket && socket.connected) return;
 
-  const newSocket = io(BASE_URL, {
-    query: {
-      userId: authUser._id,
-    },
-    transports: ["websocket"],
-  });
+    const newSocket = io(BASE_URL, {
+      query: {
+        userId: authUser._id,
+      },
+      transports: ["websocket"],
+    });
 
-  set({ socket: newSocket });
+    set({ socket: newSocket });
 
-  newSocket.on("connect", () => {
-    console.log("✅ socket connected:", newSocket.id);
-  });
+    newSocket.on("connect", () => {
+      console.log("✅ socket connected:", newSocket.id);
+    });
 
-  newSocket.on("getOnlineUsers", (userIds) => {
-    set({ onlineUsers: userIds });
-  });
-},
+    newSocket.on("getOnlineUsers", (userIds) => {
+      set({ onlineUsers: userIds });
+    });
+  },
   disconnectSocket: () => {
-  const socket = get().socket;
+    const socket = get().socket;
 
-  if (socket) {
-    socket.disconnect();
-    socket.off();
-    set({ socket: null });
-  }
-},
+    if (socket) {
+      socket.disconnect();
+      socket.off();
+      set({ socket: null });
+    }
+  },
 }));

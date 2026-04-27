@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { use } from "react";
 
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,6 +20,7 @@ const SignUpPage = () => {
     fullName: "",
     email: "",
     password: "",
+    username: "",
   });
 
   const { signup, isSigningUp } = useAuthStore();
@@ -142,7 +144,31 @@ const SignUpPage = () => {
                 />
               </div>
             </div>
+            {/* Username */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium">
+                  Username
+                </span>
+              </label>
 
+              <div className="relative">
+                <User className="absolute left-3 top-3 size-5 text-base-content/40" />
+
+                <input
+                  type="text"
+                  className="input input-bordered w-full pl-10"
+                  placeholder="your_username"
+                  value={formData.username}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      username: e.target.value.toLowerCase().trim(), // 🔥 normalize
+                    })
+                  }
+                />
+              </div>
+            </div>
             {/* Password */}
             <div className="form-control">
               <label className="label">

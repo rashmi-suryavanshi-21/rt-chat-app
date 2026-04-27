@@ -3,6 +3,7 @@ import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { MessageSquare } from "lucide-react";
 import SearchUser from "./SearchUser";
+import Avatar from "./Avatar";
 
 const Sidebar = () => {
   const {
@@ -53,7 +54,8 @@ const Sidebar = () => {
   // ✅ FILTER + PRIORITY SORT
   const displayUsers = (users || [])
     .filter((user) =>
-      user.fullName.toLowerCase().includes(q)
+      user.username?.toLowerCase().includes(q) ||
+      user.fullName?.toLowerCase().includes(q)
     )
     .sort((a, b) => {
       if (!q) {
@@ -63,8 +65,8 @@ const Sidebar = () => {
         );
       }
 
-      const aName = a.fullName.toLowerCase();
-      const bName = b.fullName.toLowerCase();
+      const aName = (a.username + " " + (a.fullName || "")).toLowerCase();
+      const bName = (b.username + " " + (b.fullName || "")).toLowerCase();
 
       const aStarts = aName.startsWith(q);
       const bStarts = bName.startsWith(q);
@@ -114,22 +116,17 @@ const Sidebar = () => {
               `}
             >
               {/* Avatar */}
-              <div className="relative">
-                <img
-                  src={user.profilePic || "/avatar.png"}
-                  className="w-10 h-10 rounded-full"
-                />
-
-                {isOnline && (
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
-                )}
-              </div>
+              <Avatar
+                src={user.profilePic}
+                size="w-10 h-10"
+                isOnline={isOnline}
+              />
 
               {/* Info */}
               <div className="flex-1">
                 <div className="flex justify-between items-center">
                   <p className="font-medium">
-                    {highlight(user.fullName)} {/* ✅ HIGHLIGHT */}
+                    {highlight( user.username ||user.fullName)}
                   </p>
 
                   {unreadCount > 0 && (
@@ -145,8 +142,8 @@ const Sidebar = () => {
                       typing...
                     </span>
                   ) : (user.lastMessage || "No messages yet").length > 15
-  ? (user.lastMessage || "No messages yet").slice(0, 15) + "..."
-  : (user.lastMessage || "No messages yet")}
+                    ? (user.lastMessage || "No messages yet").slice(0, 15) + "..."
+                    : (user.lastMessage || "No messages yet")}
                 </p>
               </div>
             </div>

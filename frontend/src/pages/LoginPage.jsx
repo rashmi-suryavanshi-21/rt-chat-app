@@ -8,6 +8,7 @@ const LoginPage = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    username: "",
   });
 
   const { login, isLoggingIn } = useAuthStore();
@@ -26,7 +27,7 @@ const LoginPage = () => {
         {/* Left Hero Section */}
         <div className="hidden lg:flex flex-col justify-center items-center bg-primary/10 p-12 text-center">
           <div className="space-y-6">
-            
+
             <div className="flex justify-center">
               <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center">
                 <MessageSquare className="w-8 h-8 text-primary" />
@@ -47,7 +48,7 @@ const LoginPage = () => {
 
         {/* Right Form Section */}
         <div className="flex flex-col justify-center p-8 sm:p-12">
-          
+
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold">Welcome Back 👋</h2>
@@ -69,13 +70,28 @@ const LoginPage = () => {
                 <Mail className="absolute left-3 top-3 h-5 w-5 text-base-content/40" />
 
                 <input
-                  type="email"
+                  type="text"
                   className="input input-bordered w-full pl-10"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  placeholder="Enter email or username"
+                  value={formData.email || formData.username}
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    // 🔥 detect email vs username
+                    if (value.includes("@")) {
+                      setFormData({
+                        ...formData,
+                        email: value,
+                        username: "",
+                      });
+                    } else {
+                      setFormData({
+                        ...formData,
+                        username: value,
+                        email: "",
+                      });
+                    }
+                  }}
                 />
               </div>
             </div>

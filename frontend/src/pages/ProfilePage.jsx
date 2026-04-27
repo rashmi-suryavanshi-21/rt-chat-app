@@ -6,8 +6,18 @@ import { useNavigate } from "react-router-dom";
 const ProfilePage = () => {
   const { authUser, isUpdatingProfile, updateProfile } = useAuthStore();
   const [selectedImg, setSelectedImg] = useState(null);
-
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [bio, setBio] = useState(authUser?.bio || "");
   const navigate = useNavigate();
+
+  const handleBioSave = async () => {
+    try {
+      await updateProfile({ bio });
+      setIsEditingBio(false);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -40,22 +50,23 @@ const ProfilePage = () => {
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="text-center space-y-1">
-            <h1 className="text-3xl font-bold">Profile</h1>
-            <p className="text-base-content/60">
-              Manage your account information
-            </p>
-          </div>
 
           {/* avatar upload section */}
 
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <img
-                src={selectedImg || authUser.profilePic || "/avatar.png"}
-                alt="Profile"
-                className="size-32 rounded-full object-cover border-2 border-primary"
-              />
+              {selectedImg || authUser.profilePic ? (
+                <img
+                  src={selectedImg || authUser.profilePic}
+                  alt="Profile"
+                  className="size-32 rounded-full object-cover border-2 border-primary"
+                />
+              ) : (
+                <div className="size-32 rounded-full bg-base-300 flex items-center justify-center border-2 border-primary">
+                  <User className="size-12 text-base-content/50" />
+                </div>
+              )}
+
               <label
                 htmlFor="avatar-upload"
                 className={`
@@ -99,6 +110,56 @@ const ProfilePage = () => {
               <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.email}</p>
             </div>
           </div>
+          {/* Username */}
+          <div className="space-y-1.5">
+            <div className="text-sm text-zinc-400 flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Username
+            </div>
+            <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
+              @{authUser?.username || "not_set"}
+            </p>
+          </div>
+          {/* Bio Section */}
+
+          {/* ✅ Show Add Button when no bio */}
+          {!authUser?.bio && !isEditingBio && (
+            <button
+              onClick={() => setIsEditingBio(true)}
+              className="btn btn-sm btn-outline"
+            >
+              + Add Bio
+            </button>
+          )}
+          {/* Bio Section */}
+          {(authUser?.bio || isEditingBio) && (
+            <div className="space-y-1.5">
+              <div className="text-sm text-zinc-400 flex items-center gap-2">
+                <User className="w-4 h-4" />
+                About
+              </div>
+
+              {!isEditingBio ? (
+                <p
+                  onClick={() => setIsEditingBio(true)}
+                  className="px-4 py-2.5 bg-base-200 rounded-lg border cursor-pointer hover:bg-base-300 transition"
+                >
+                  {authUser?.bio}
+                </p>
+              ) : (
+                <input
+                  type="text"
+                  autoFocus
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  onBlur={handleBioSave}
+                  onKeyDown={(e) => e.key === "Enter" && handleBioSave()}
+                  className="input input-bordered w-full"
+                  placeholder="Write something..."
+                />
+              )}
+            </div>
+          )}
 
           <div className="mt-6 bg-base-200 shadow-mid rounded-xl p-6">
             <h2 className="text-lg font-medium  mb-4">Account Information</h2>

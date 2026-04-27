@@ -160,7 +160,7 @@ const MessageInput = () => {
         </div>
       )}
 
-      <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+      <form onSubmit={handleSendMessage} className="flex items-center gap-2 relative">
         <div className="flex-1 flex gap-2">
           <input
             type="text"
@@ -216,7 +216,7 @@ const MessageInput = () => {
         </button>
 
         {showEmoji && (
-          <div className="absolute bottom-16 z-50">
+          <div className="absolute bottom-full mb-3 left-0 z-50">
             <Picker data={data} onEmojiSelect={addEmoji} />
           </div>
         )}

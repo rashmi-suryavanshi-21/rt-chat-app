@@ -6,6 +6,7 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, Clock } from "lucide-react";
+import Avatar from "./Avatar";
 
 const ChatContainer = () => {
   const [openImage, setOpenImage] = useState(null);
@@ -89,22 +90,20 @@ const ChatContainer = () => {
           <div
             key={message._id}
             ref={index === messages.length - 1 ? messageEndRef : null}
-            className={`chat ${
-              message.senderId === authUser._id ? "chat-end" : "chat-start"
-            }`}
+            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"
+              }`}
           >
+
             {/* Avatar */}
             <div className="chat-image avatar">
-              <div className="size-10 rounded-full border">
-                <img
-                  src={
-                    message.senderId === authUser._id
-                      ? authUser.profilePic || "/avatar.png"
-                      : selectedUser?.profilePic || "/avatar.png"
-                  }
-                  alt="profile"
-                />
-              </div>
+              <Avatar
+                src={
+                  message.senderId === authUser._id
+                    ? authUser.profilePic
+                    : selectedUser?.profilePic
+                }
+                size="w-10 h-10"
+              />
             </div>
 
             {/* Time */}
