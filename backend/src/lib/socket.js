@@ -65,6 +65,25 @@ io.on("connection", (socket) => {
   });
 
   // =========================
+// MESSAGE NOTIFICATION
+// =========================
+socket.on("sendMessage", async ({ message, receiverId, senderName }) => {
+  const receiverSocketId = userSocketMap[receiverId];
+
+  const payload = {
+    senderId: userId,
+    senderName,
+    message,
+  };
+
+  // अगर user online है तो real-time notification भेजो
+  if (receiverSocketId) {
+    io.to(receiverSocketId).emit("newMessageNotification", payload);
+  }
+});
+console.log("HANDSHAKE USERID:", socket.handshake.query.userId);
+
+  // =========================
   // MARK AS READ
   // =========================
   socket.on("markAsRead", async ({ senderId }) => {
@@ -118,5 +137,6 @@ io.on("connection", (socket) => {
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
 });
+
 
 export { io, app, server };

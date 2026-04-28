@@ -148,6 +148,25 @@ export const sendMessage = async (req, res) => {
       io.to(senderSocketId).emit("newMessage", populated);
     }
 
+    // =========================
+    // 🔔 MESSAGE NOTIFICATION (NEW ADDITION)
+    // =========================
+    const notificationPayload = {
+      senderId,
+      receiverId,
+      // senderName: req.user.username || "User",
+      senderName: req.user.username || req.user.username || "User",
+      message: text || "Sent an image",
+      image: imageUrl || null,
+    };
+
+    // 🔔 NOTIFICATION EVENT (THIS IS MISSING LINK)
+if (receiverSocketId) {
+  io.to(receiverSocketId).emit("newMessageNotification", notificationPayload);
+}
+console.log("receiverSocketId:", receiverSocketId);
+console.log("notificationPayload:", notificationPayload);
+
     // 🔥 IMPORTANT FIX (SIDEBAR REALTIME UPDATE)
     io.emit("sidebarUpdate", {
       userId: receiverId,

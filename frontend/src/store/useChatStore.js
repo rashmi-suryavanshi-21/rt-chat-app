@@ -12,6 +12,7 @@ export const useChatStore = create((set, get) => ({
   isMessagesLoading: false,
   isSearchLoading: false,
   typingUsers: {},
+  notifications: [],
 
   // =========================
   // HELPERS
@@ -38,6 +39,16 @@ export const useChatStore = create((set, get) => ({
 
     return newUsers;
   },
+
+  // =========================
+  //NOTIFICATIONs
+  // =========================
+  addNotification: (notif) =>
+    set((state) => ({
+      notifications: [notif, ...state.notifications],
+    })),
+
+  clearNotifications: () => set({ notifications: [] }),
 
   // =========================
   // GET USERS
@@ -197,6 +208,55 @@ export const useChatStore = create((set, get) => ({
         return { typingUsers: updated };
       });
     });
+
+    // =========================
+    // 🔔 MESSAGE NOTIFICATION
+    // =========================
+    socket.off("newMessageNotification");
+
+    socket.on("newMessageNotification", (data) => {
+      const { addNotification ,selectedUser} = get();
+
+      console.log("🔥 NOTIFICATION RECEIVED:", data);
+
+      // 🔥 check if chat is open
+  const isChatOpen =
+    selectedUser?._id?.toString() === data.senderId?.toString();
+
+      // 🔔 UI notification (ALWAYS WORKS)
+      if (!isChatOpen) {
+      toast.success(`${data.senderName}: ${data.message}`);
+
+      addNotification({
+        senderId: data.senderId,
+        senderName: data.senderName,
+        message: data.message,
+        image: data.image || null,
+      });
+      // 🧠 Request focus change (helps Chrome show notification)
+      try {
+        window.blur();
+      } catch (e) { }
+
+      // 🔔 Browser notification (FIXED VERSION)
+      if (Notification.permission === "granted") {
+        setTimeout(() => {
+          const notification = new Notification(`💬 ${data.senderName}`, {
+            body: data.message || "New message",
+            icon: "/favicon.ico", // important for visibility
+          });
+
+          console.log("NOTIFICATION CREATED:", notification);
+
+          // optional auto-close (IMPORTANT)
+          setTimeout(() => {
+            notification.close();
+          }, 4000);
+        }, 100);
+      }
+    }
+    });
+
     // =========================
     // NEW MESSAGE
     // =========================
@@ -336,6 +396,7 @@ export const useChatStore = create((set, get) => ({
     // ✅ ADD THESE
     socket.off("typing");
     socket.off("stopTyping");
+    socket.off("newMessageNotification");
   },
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),

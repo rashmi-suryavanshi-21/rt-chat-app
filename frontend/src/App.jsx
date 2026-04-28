@@ -26,6 +26,18 @@ const App = () => {
 
   console.log({ authUser });
 
+useEffect(() => {
+  console.log("Requesting notification permission...");
+
+  if ("Notification" in window) {
+    Notification.requestPermission().then((perm) => {
+      console.log("Permission result:", perm);
+    });
+  }
+}, []);
+// useEffect(() => {
+//   window.focus();
+// }, []);
   if (isCheckingAuth && !authUser)
     return (
       <div className="flex items-center justify-center h-screen">
@@ -33,6 +45,7 @@ const App = () => {
       </div>
     );
 
+ 
   return (
     <div data-theme={theme}>
       <Navbar />
