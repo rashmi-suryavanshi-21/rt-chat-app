@@ -13,7 +13,7 @@ const Sidebar = () => {
     selectedUser: currentChatUser,
     subscribeToMessages,
     unsubscribeFromMessages,
-    typingUsers,
+    typingUsers
   } = useChatStore();
 
   const { onlineUsers } = useAuthStore();
@@ -75,6 +75,7 @@ const Sidebar = () => {
       return aName.localeCompare(bName);
     });
 
+    
   return (
     <div className="w-80 border-r border-base-300 bg-base-100 overflow-y-auto">
 
@@ -130,7 +131,7 @@ const Sidebar = () => {
 
                 {/* LAST MESSAGE */}
                 <p className="text-xs text-base-content/60 truncate">
-                  {typingUsers?.[user._id] ? (
+                  {Boolean(typingUsers && typingUsers[user._id]) ? (
                     <span className="text-blue-400 animate-pulse">
                       typing...
                     </span>
@@ -147,6 +148,7 @@ const Sidebar = () => {
                     "No messages yet"
                   )}
                 </p>
+                
               </div>
             </div>
           );

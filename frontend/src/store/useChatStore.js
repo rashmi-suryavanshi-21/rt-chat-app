@@ -175,7 +175,31 @@ export const useChatStore = create((set, get) => ({
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
+    // =========================
+    // ✨ TYPING EVENTS (ADD THIS)
+    // =========================
+    socket.off("typing");
+    socket.on("typing", ({ senderId }) => {
+      set((state) => ({
+        typingUsers: {
+          ...state.typingUsers,
+          [senderId]: true,
+        },
+      }));
+    });
 
+    socket.off("stopTyping");
+    socket.on("stopTyping", ({ senderId }) => {
+      set((state) => {
+        const updated = { ...state.typingUsers };
+        delete updated[senderId]; // cleaner than false
+
+        return { typingUsers: updated };
+      });
+    });
+    // =========================
+    // NEW MESSAGE
+    // =========================
     socket.off("newMessage");
 
     socket.on("newMessage", (newMessage) => {
@@ -273,9 +297,9 @@ export const useChatStore = create((set, get) => ({
         const updatedUsers = state.users.map((u) =>
           u.lastMessageId === messageId
             ? {
-                ...u,
-                lastMessage: "deleted",
-              }
+              ...u,
+              lastMessage: "deleted",
+            }
             : u,
         );
 
@@ -291,11 +315,11 @@ export const useChatStore = create((set, get) => ({
         users: state.users.map((u) =>
           u._id === userId
             ? {
-                ...u,
-                lastMessage: message.isDeleted ? "deleted" : message.text,
-                lastMessageId: message._id,
-                updatedAt: message.createdAt || new Date().toISOString(),
-              }
+              ...u,
+              lastMessage: message.isDeleted ? "deleted" : message.text,
+              lastMessageId: message._id,
+              updatedAt: message.createdAt || new Date().toISOString(),
+            }
             : u,
         ),
       }));
@@ -309,6 +333,9 @@ export const useChatStore = create((set, get) => ({
     socket.off("newMessage");
     socket.off("messagesRead");
     socket.off("messageUpdated");
+    // ✅ ADD THESE
+    socket.off("typing");
+    socket.off("stopTyping");
   },
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),
