@@ -10,11 +10,8 @@ import Avatar from "./Avatar";
 
 const ChatContainer = () => {
   const [openImage, setOpenImage] = useState(null);
-  const [message, setMessage] = useState("");
-  const [showEmoji, setShowEmoji] = useState(false);
-
   const [menu, setMenu] = useState(null);
-  const [editingMsg, setEditingMsg] = useState(null); // 🔥 edit state
+  const [editingMsg, setEditingMsg] = useState(null);
 
   const {
     messages,
@@ -33,23 +30,16 @@ const ChatContainer = () => {
     if (!selectedUser?._id) return;
 
     getMessages(selectedUser._id);
-
-    if (typeof subscribeToMessages === "function") {
-      subscribeToMessages();
-    }
+    subscribeToMessages?.();
 
     return () => {
-      if (typeof unsubscribeFromMessages === "function") {
-        unsubscribeFromMessages();
-      }
+      unsubscribeFromMessages?.();
     };
   }, [selectedUser?._id]);
 
   useEffect(() => {
-    console.log("MESSAGES ARRAY:", messages);
-    messageEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
+    console.log("MSG:", messages);
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
@@ -93,14 +83,15 @@ const ChatContainer = () => {
             key={message._id}
             ref={index === messages.length - 1 ? messageEndRef : null}
             className={`chat ${
-              message.senderId === authUser._id ? "chat-end" : "chat-start"
+              message.senderId === authUser._id
+                ? "chat-end"
+                : "chat-start"
             }`}
             onContextMenu={(e) => {
               if (message.senderId !== authUser._id || message.isDeleted)
                 return;
 
               e.preventDefault();
-
               setMenu({
                 x: e.pageX,
                 y: e.pageY,
@@ -124,7 +115,7 @@ const ChatContainer = () => {
                 {formatMessageTime(
                   message.isScheduled
                     ? message.sentAt || message.scheduledTime
-                    : message.createdAt,
+                    : message.createdAt
                 )}
               </time>
             </div>
@@ -138,14 +129,22 @@ const ChatContainer = () => {
                 />
               )}
 
-              {/* Deleted */}
+              {/* ✅ FIXED SINGLE RENDER */}
               {message.isDeleted ? (
                 <p className="text-gray-400 italic text-sm">
                   This message was deleted
                 </p>
-              ) : (
-                message.text && <p>{message.text}</p>
-              )}
+              ) : message.text ? (
+                <p className="flex items-end gap-1">
+                  {message.text}
+
+                  {message.isEdited && (
+                    <span className="text-[10px] text-gray-400 italic">
+                      (edited)
+                    </span>
+                  )}
+                </p>
+              ) : null}
 
               {message.isScheduled && !message.isSent && (
                 <div className="text-xs text-gray-400 mt-1">
@@ -154,7 +153,7 @@ const ChatContainer = () => {
                 </div>
               )}
 
-              {/* Ticks */}
+              {/* TICKS */}
               {message.senderId === authUser._id && (
                 <div className="flex justify-end mt-1">
                   {message.isScheduled && !message.isSent ? (
@@ -172,7 +171,7 @@ const ChatContainer = () => {
           </div>
         ))}
 
-        {/* 🔥 MENU */}
+        {/* MENU */}
         {menu && (
           <div
             style={{
@@ -188,23 +187,22 @@ const ChatContainer = () => {
               boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
             }}
           >
-            {/* DELETE */}
             <div
               className="px-4 py-2 text-sm hover:bg-red-500/20 text-red-400 cursor-pointer"
               onClick={() => {
-                if (!menu?.message?._id) return;
-                useChatStore.getState().deleteMessage(menu.message._id);
+                useChatStore
+                  .getState()
+                  .deleteMessage(menu.message._id);
                 setMenu(null);
               }}
             >
               Delete
             </div>
 
-            {/* 🔥 EDIT FIX */}
             <div
               className="px-4 py-2 text-sm hover:bg-blue-500/20 text-blue-400 cursor-pointer"
               onClick={() => {
-                setEditingMsg(menu.message); // ✅ main fix
+                setEditingMsg(menu.message);
                 setMenu(null);
               }}
             >
@@ -213,17 +211,20 @@ const ChatContainer = () => {
           </div>
         )}
 
-        {/* Image Modal */}
+        {/* IMAGE MODAL */}
         {openImage && (
           <div
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
             onClick={() => setOpenImage(null)}
           >
-            <img src={openImage} className="max-h-[90%] rounded-lg" />
+            <img
+              src={openImage}
+              className="max-h-[90%] rounded-lg"
+            />
           </div>
         )}
 
-        {/* Typing */}
+        {/* TYPING */}
         {isTyping && (
           <div className="text-xs text-gray-400 animate-pulse px-3">
             typing...
@@ -231,8 +232,10 @@ const ChatContainer = () => {
         )}
       </div>
 
-      {/* 🔥 IMPORTANT */}
-      <MessageInput editingMsg={editingMsg} setEditingMsg={setEditingMsg} />
+      <MessageInput
+        editingMsg={editingMsg}
+        setEditingMsg={setEditingMsg}
+      />
     </div>
   );
 };

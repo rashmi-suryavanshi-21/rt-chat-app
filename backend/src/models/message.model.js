@@ -50,7 +50,7 @@ const messageSchema = new mongoose.Schema(
       type: Date,
     },
 
-    edited: {
+    isEdited: {
       type: Boolean,
       default: false,
     },

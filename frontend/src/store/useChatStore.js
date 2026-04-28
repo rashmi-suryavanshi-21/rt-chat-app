@@ -4,7 +4,6 @@ import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
 
 export const useChatStore = create((set, get) => ({
-
   messages: [],
   users: [],
   searchedUsers: [],
@@ -19,7 +18,7 @@ export const useChatStore = create((set, get) => ({
   // =========================
   moveUserToTop: (users, userId, msg) => {
     const index = users.findIndex(
-      (u) => u._id?.toString() === userId?.toString()
+      (u) => u._id?.toString() === userId?.toString(),
     );
 
     if (index === -1) return users;
@@ -28,7 +27,7 @@ export const useChatStore = create((set, get) => ({
 
     const updatedUser = {
       ...user,
-      lastMessage: msg?.text || msg?.message || "",
+      lastMessage: msg?.text || "",
       lastMessageId: msg?._id || null,
       updatedAt: msg?.createdAt || new Date().toISOString(),
     };
@@ -50,7 +49,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get("/messages/users");
 
       const sortedUsers = res.data.sort(
-        (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+        (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0),
       );
 
       set({ users: sortedUsers });
@@ -68,7 +67,7 @@ export const useChatStore = create((set, get) => ({
     const { users } = get();
 
     const filtered = users.filter((user) =>
-      user.fullName?.toLowerCase().includes(query.toLowerCase())
+      user.fullName?.toLowerCase().includes(query.toLowerCase()),
     );
 
     set({ searchedUsers: filtered });
@@ -92,7 +91,7 @@ export const useChatStore = create((set, get) => ({
 
       set((state) => ({
         users: state.users.map((u) =>
-          u._id === userId ? { ...u, unreadCount: 0 } : u
+          u._id === userId ? { ...u, unreadCount: 0 } : u,
         ),
       }));
     } catch (error) {
@@ -113,14 +112,11 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
-        messageData
+        messageData,
       );
 
       set((state) => {
-        const exists = state.messages.some(
-          (m) => m._id === res.data._id
-        );
-
+        const exists = state.messages.some((m) => m._id === res.data._id);
         if (exists) return state;
 
         return {
@@ -128,65 +124,53 @@ export const useChatStore = create((set, get) => ({
           users: get().moveUserToTop(state.users, selectedUser._id, res.data),
         };
       });
-
     } catch (error) {
-      console.error(error);
       toast.error(error.response?.data?.message || "Error sending message");
     }
   },
 
   // =========================
-  // DELETE MESSAGE (FIXED)
+  // DELETE MESSAGE
   // =========================
- deleteMessage: async (id) => {
-  try {
-    await axiosInstance.delete(`/messages/delete/${id}`);
+  deleteMessage: async (id) => {
+    try {
+      await axiosInstance.delete(`/messages/delete/${id}`);
 
-    set((state) => {
-      const updatedMessages = state.messages.map((m) =>
-        m._id === id
-          ? { ...m, isDeleted: true, text: "This message was deleted" }
-          : m
-      );
-
-      return {
-        messages: updatedMessages,
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === id ? { ...m, isDeleted: true, text: "" } : m,
+        ),
 
         users: state.users.map((u) =>
           u.lastMessageId === id
-            ? {
-                ...u,
-                lastMessage: "This message was deleted",
-              }
-            : u
+            ? { ...u, lastMessage: "This message was deleted" }
+            : u,
         ),
-      };
-    });
+      }));
+    } catch (error) {
+      toast.error("Delete failed");
+    }
+  },
 
-  } catch (error) {
-    toast.error("Delete failed");
-  }
-},
   // =========================
-  // UPDATE MESSAGE
+  // UPDATE MESSAGE (FIXED)
   // =========================
   updateMessage: async (id, text) => {
     try {
-      await axiosInstance.put(`/messages/update/${id}`, { text });
+      const res = await axiosInstance.put(`/messages/update/${id}`, { text });
 
-      set({
-        messages: get().messages.map((m) =>
-          m._id === id ? { ...m, text } : m
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === id ? { ...m, ...res.data, isEdited: true } : m,
         ),
-      });
-
+      }));
     } catch {
       toast.error("Update failed");
     }
   },
 
   // =========================
-  // SOCKET (FIXED DUPLICATES)
+  // SOCKET
   // =========================
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
@@ -203,13 +187,9 @@ export const useChatStore = create((set, get) => ({
         (newMessage.senderId?.toString() === selectedUser._id?.toString() ||
           newMessage.receiverId?.toString() === selectedUser._id?.toString());
 
-      // CHAT OPEN → add message once only
       if (isChatOpen) {
         set((state) => {
-          const exists = state.messages.some(
-            (m) => m._id === newMessage._id
-          );
-
+          const exists = state.messages.some((m) => m._id === newMessage._id);
           if (exists) return state;
 
           return {
@@ -222,7 +202,6 @@ export const useChatStore = create((set, get) => ({
         });
       }
 
-      // SIDEBAR UPDATE
       set((state) => {
         const users = [...state.users];
 
@@ -231,9 +210,7 @@ export const useChatStore = create((set, get) => ({
             ? newMessage.receiverId?.toString()
             : newMessage.senderId?.toString();
 
-        const index = users.findIndex(
-          (u) => u._id?.toString() === otherUserId
-        );
+        const index = users.findIndex((u) => u._id?.toString() === otherUserId);
 
         if (index === -1) return state;
 
@@ -244,9 +221,7 @@ export const useChatStore = create((set, get) => ({
           lastMessage: newMessage.text || "",
           lastMessageId: newMessage._id,
           updatedAt: newMessage.createdAt || new Date().toISOString(),
-          unreadCount: isChatOpen
-            ? 0
-            : (user.unreadCount || 0) + 1,
+          unreadCount: isChatOpen ? 0 : (user.unreadCount || 0) + 1,
         };
 
         users.splice(index, 1);
@@ -256,14 +231,72 @@ export const useChatStore = create((set, get) => ({
       });
     });
 
+    // =========================
+    // READ RECEIPT
+    // =========================
     socket.off("messagesRead");
+
     socket.on("messagesRead", ({ senderId }) => {
       set((state) => ({
         users: state.users.map((u) =>
-          u._id === senderId ? { ...u, unreadCount: 0 } : u
+          u._id === senderId ? { ...u, unreadCount: 0 } : u,
         ),
         messages: state.messages.map((m) =>
-          m.senderId === senderId ? { ...m, isRead: true } : m
+          m.senderId === senderId ? { ...m, isRead: true } : m,
+        ),
+      }));
+    });
+
+    // =========================
+    // 🔥 MESSAGE EDIT FIX (IMPORTANT)
+    // =========================
+    socket.off("messageUpdated");
+
+    socket.on("messageUpdated", (updatedMessage) => {
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === updatedMessage._id ? { ...m, ...updatedMessage } : m,
+        ),
+      }));
+    });
+
+    socket.off("messageDeleted");
+
+    socket.on("messageDeleted", ({ messageId }) => {
+      set((state) => {
+        const updatedMessages = state.messages.map((m) =>
+          m._id === messageId
+            ? { ...m, isDeleted: true, text: "This message was deleted" }
+            : m,
+        );
+
+        const updatedUsers = state.users.map((u) =>
+          u.lastMessageId === messageId
+            ? {
+                ...u,
+                lastMessage: "deleted",
+              }
+            : u,
+        );
+
+        return {
+          messages: updatedMessages,
+          users: updatedUsers,
+        };
+      });
+    });
+    socket.off("sidebarUpdate");
+    socket.on("sidebarUpdate", ({ userId, message }) => {
+      set((state) => ({
+        users: state.users.map((u) =>
+          u._id === userId
+            ? {
+                ...u,
+                lastMessage: message.isDeleted ? "deleted" : message.text,
+                lastMessageId: message._id,
+                updatedAt: message.createdAt || new Date().toISOString(),
+              }
+            : u,
         ),
       }));
     });
@@ -275,6 +308,7 @@ export const useChatStore = create((set, get) => ({
 
     socket.off("newMessage");
     socket.off("messagesRead");
+    socket.off("messageUpdated");
   },
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),

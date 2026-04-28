@@ -31,16 +31,14 @@ export const getUsersForSidebar = async (req, res) => {
           isRead: false,
         });
 
-        // 🔥 SAFE LAST MESSAGE LOGIC (IMPORTANT FIX)
-        let lastMessageText = null;
-        if (!lastMsg) {
-          lastMessageText = "No messages yet";
-        } else if (lastMsg.isDeleted) {
-          lastMessageText = "deleted";
-        } else if (lastMsg.text && lastMsg.text.trim() !== "") {
-          lastMessageText = lastMsg.text;
-        } else {
-          lastMessageText = "No messages yet";
+        let lastMessageText = "No messages yet";
+
+        if (lastMsg) {
+          if (lastMsg.isDeleted) {
+            lastMessageText = "deleted";
+          } else if (lastMsg.text?.trim()) {
+            lastMessageText = lastMsg.text;
+          }
         }
 
         return {
@@ -50,20 +48,19 @@ export const getUsersForSidebar = async (req, res) => {
           updatedAt: lastMsg?.createdAt || user.createdAt,
           unreadCount,
         };
-      }),
+      })
     );
 
-    // 🔥 SORT BY RECENT ACTIVITY
     usersWithLastMsg.sort(
-      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
+      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
     );
 
     res.status(200).json(usersWithLastMsg);
   } catch (error) {
-    console.error("Error fetching users:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
+
 // =========================
 // GET MESSAGES
 // =========================
@@ -72,14 +69,13 @@ export const getMessages = async (req, res) => {
     const { id: userToChatId } = req.params;
     const myId = req.user._id;
 
-    // ✅ mark as read in DB
     await Message.updateMany(
       {
         senderId: userToChatId,
         receiverId: myId,
         isRead: false,
       },
-      { isRead: true },
+      { isRead: true }
     );
 
     const messages = await Message.find({
@@ -89,8 +85,8 @@ export const getMessages = async (req, res) => {
       ],
     }).sort({ createdAt: 1 });
 
-    // 🔥 IMPORTANT: notify sender instantly
     const senderSocketId = getReceiverSocketId(userToChatId);
+    const mySocketId = getReceiverSocketId(myId);
 
     if (senderSocketId) {
       io.to(senderSocketId).emit("messagesRead", {
@@ -98,9 +94,6 @@ export const getMessages = async (req, res) => {
         receiverId: myId,
       });
     }
-
-    // 🔥 ALSO notify current user (so sidebar updates instantly)
-    const mySocketId = getReceiverSocketId(myId);
 
     if (mySocketId) {
       io.to(mySocketId).emit("messagesRead", {
@@ -127,8 +120,8 @@ export const sendMessage = async (req, res) => {
     let imageUrl;
 
     if (image) {
-      const uploadResponse = await cloudinary.uploader.upload(image);
-      imageUrl = uploadResponse.secure_url;
+      const upload = await cloudinary.uploader.upload(image);
+      imageUrl = upload.secure_url;
     }
 
     const newMessage = await Message.create({
@@ -137,62 +130,39 @@ export const sendMessage = async (req, res) => {
       text,
       image: imageUrl,
       isRead: false,
+      isEdited: false,
+      isDeleted: false,
+      isScheduled: false,
     });
 
-    const populatedMessage = await Message.findById(newMessage._id);
+    const populated = await Message.findById(newMessage._id);
 
-    // send to receiver
     const receiverSocketId = getReceiverSocketId(receiverId);
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", populatedMessage);
-    }
-
-    // ALSO send back to sender (important for instant UI sync)
     const senderSocketId = getReceiverSocketId(senderId);
 
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("newMessage", populatedMessage);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", populated);
     }
 
-    res.status(201).json(populatedMessage);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("newMessage", populated);
+    }
+
+    // 🔥 IMPORTANT FIX (SIDEBAR REALTIME UPDATE)
+    io.emit("sidebarUpdate", {
+      userId: receiverId,
+      message: populated,
+    });
+
+    res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
 // =========================
-// MARK AS READ (SOCKET USE)
+// SCHEDULE MESSAGE
 // =========================
-export const markMessagesAsRead = async (req, res) => {
-  try {
-    const { id: senderId } = req.params;
-    const receiverId = req.user._id;
-
-    await Message.updateMany(
-      {
-        senderId,
-        receiverId,
-        isRead: false,
-      },
-      { isRead: true },
-    );
-
-    const senderSocketId = getReceiverSocketId(senderId);
-
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("messagesRead", {
-        senderId,
-        receiverId,
-      });
-    }
-
-    res.status(200).json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
 export const scheduleMessage = async (req, res) => {
   try {
     const { receiverId, text, scheduledTime } = req.body;
@@ -205,79 +175,86 @@ export const scheduleMessage = async (req, res) => {
       scheduledTime,
       isScheduled: true,
       isSent: false,
+      isDeleted: false,
+      isEdited: false,
     });
 
     res.status(201).json(message);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Error scheduling message" });
   }
 };
 
-// DELETE MESSAGE
+// =========================
+// DELETE MESSAGE (FIXED REALTIME)
+// =========================
 export const deleteMessage = async (req, res) => {
   try {
     const message = await Message.findById(req.params.id);
 
-    if (!message) {
-      return res.status(404).json({ error: "Not found" });
-    }
+    if (!message) return res.status(404).json({ error: "Not found" });
 
     if (message.senderId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: "Not allowed" });
     }
 
-    // 🔥 mark as deleted (DO NOT trust empty text only)
     message.isDeleted = true;
-    message.text = "This message was deleted";
     await message.save();
+
+    // 🔥 REALTIME FIX
+    io.to(getReceiverSocketId(message.receiverId)).emit("messageDeleted", {
+      messageId: message._id,
+    });
+
+    io.to(getReceiverSocketId(message.senderId)).emit("messageDeleted", {
+      messageId: message._id,
+    });
 
     res.status(200).json({
       success: true,
-      message: "Message deleted successfully",
       deletedMessageId: message._id,
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-// UPDATE MESSAGE
+// =========================
+// UPDATE MESSAGE (FIXED REALTIME + EDIT FLAG)
+// =========================
 export const updateMessage = async (req, res) => {
   try {
     const { id } = req.params;
     const { text } = req.body;
 
-    if (!text || !text.trim()) {
-      return res.status(400).json({ error: "Text is required" });
-    }
-
     const message = await Message.findById(id);
 
-    if (!message) {
-      return res.status(404).json({ error: "Message not found" });
-    }
+    if (!message) return res.status(404).json({ error: "Not found" });
+
     if (message.senderId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: "Not allowed" });
     }
 
-    //update
     message.text = text.trim();
     message.isEdited = true;
 
     await message.save();
 
-    // 🔥 REALTIME (IMPORTANT)
-    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
+    const updatedMessage = await Message.findById(id);
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("messageUpdated", message);
-    }
+    // 🔥 REALTIME FIX (IMPORTANT)
+    io.to(getReceiverSocketId(message.receiverId)).emit(
+      "messageUpdated",
+      updatedMessage
+    );
 
-    res.status(200).json(message);
+    io.to(getReceiverSocketId(message.senderId)).emit(
+      "messageUpdated",
+      updatedMessage
+    );
+
+    res.status(200).json(updatedMessage);
   } catch (err) {
-    console.error("Update error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };

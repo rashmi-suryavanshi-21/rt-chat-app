@@ -94,11 +94,18 @@ const Sidebar = () => {
           const isActiveChat = currentChatUser?._id === user._id;
           const unreadCount = isActiveChat ? 0 : user.unreadCount || 0;
 
+          // ✅ FIX: unified delete check
+          const isDeleted =
+            user.lastMessage === "deleted" ||
+            user.lastMessage === "This message was deleted";
+
           return (
             <div
               key={user._id}
               onClick={() => setSelectedUser(user)}
-              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-base-200 transition ${isActiveChat ? "bg-base-200" : ""}`}
+              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-base-200 transition ${
+                isActiveChat ? "bg-base-200" : ""
+              }`}
             >
               {/* Avatar */}
               <Avatar
@@ -121,15 +128,16 @@ const Sidebar = () => {
                   )}
                 </div>
 
-                {/* 🔥 LAST MESSAGE FIX */}
+                {/* LAST MESSAGE */}
                 <p className="text-xs text-base-content/60 truncate">
                   {typingUsers?.[user._id] ? (
                     <span className="text-blue-400 animate-pulse">
                       typing...
                     </span>
-                  ) : user.lastMessage === "deleted" ? (
+                  ) : isDeleted ? (
                     <span className="italic text-gray-400 flex items-center gap-1">
-                      <Ban className="w-3 h-3 text-gray-400" /> deleted
+                      <Ban className="w-3 h-3 text-gray-400" />
+                      deleted
                     </span>
                   ) : user.lastMessage ? (
                     user.lastMessage.length > 15
