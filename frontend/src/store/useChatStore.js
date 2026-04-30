@@ -180,6 +180,26 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  pinMessage: async (messageId) => {
+  const res = await axiosInstance.put(`/messages/pin/${messageId}`);
+
+  set((state) => ({
+    messages: state.messages.map((m) =>
+      m._id === messageId ? res.data : m
+    ),
+  }));
+},
+
+starMessage: async (messageId) => {
+  const res = await axiosInstance.put(`/messages/star/${messageId}`);
+
+  set((state) => ({
+    messages: state.messages.map((m) =>
+      m._id === messageId ? res.data : m
+    ),
+  }));
+},
+
   // =========================
   // SOCKET
   // =========================

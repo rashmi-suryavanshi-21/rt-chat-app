@@ -287,3 +287,35 @@ export const updateMessage = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+export const togglePinMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+
+    const message = await Message.findById(messageId);
+
+    message.pinned = !message.pinned;
+
+    await message.save();
+
+    res.status(200).json(message);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const toggleStarMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+
+    const message = await Message.findById(messageId);
+
+    message.starred = !message.starred;
+
+    await message.save();
+
+    res.status(200).json(message);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

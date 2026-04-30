@@ -5,7 +5,7 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
-import { Check, CheckCheck, Clock } from "lucide-react";
+import { Check, CheckCheck, Clock, Star, Pin } from "lucide-react";
 import Avatar from "./Avatar";
 
 const ChatContainer = () => {
@@ -25,6 +25,9 @@ const ChatContainer = () => {
 
   const { authUser, socket } = useAuthStore();
   const messageEndRef = useRef(null);
+
+  // ✅ ADD STORE ACTIONS (ONLY ADDITION)
+  const { pinMessage, starMessage } = useChatStore();
 
   useEffect(() => {
     if (!selectedUser?._id) return;
@@ -83,9 +86,7 @@ const ChatContainer = () => {
             key={message._id}
             ref={index === messages.length - 1 ? messageEndRef : null}
             className={`chat ${
-              message.senderId === authUser._id
-                ? "chat-end"
-                : "chat-start"
+              message.senderId === authUser._id ? "chat-end" : "chat-start"
             }`}
             onContextMenu={(e) => {
               if (message.senderId !== authUser._id || message.isDeleted)
@@ -115,7 +116,7 @@ const ChatContainer = () => {
                 {formatMessageTime(
                   message.isScheduled
                     ? message.sentAt || message.scheduledTime
-                    : message.createdAt
+                    : message.createdAt,
                 )}
               </time>
             </div>
@@ -129,7 +130,6 @@ const ChatContainer = () => {
                 />
               )}
 
-              {/* ✅ FIXED SINGLE RENDER */}
               {message.isDeleted ? (
                 <p className="text-gray-400 italic text-sm">
                   This message was deleted
@@ -153,17 +153,33 @@ const ChatContainer = () => {
                 </div>
               )}
 
-              {/* TICKS */}
+              {/* ⭐📌 ADDED ICONS (ONLY ADDITION) */}
               {message.senderId === authUser._id && (
-                <div className="flex justify-end mt-1">
-                  {message.isScheduled && !message.isSent ? (
-                    <Clock className="size-4 text-yellow-500" />
-                  ) : message.isDeleted ? (
-                    <Check className="size-4 text-gray-400" />
-                  ) : message.isRead ? (
-                    <CheckCheck className="size-4 text-blue-500" />
-                  ) : (
-                    <Check className="size-4 text-gray-400" />
+                <div className="flex justify-end items-end gap-1 mt-1 leading-none">
+                  <div className="flex gap-2 text-xs mb-1">
+                    {message.pinned && (
+                      <span className="text-yellow-400"><Pin className="w-3 h-3  fill-gray-500 text-gray-500 "  /></span>
+                    )}
+                    {message.starred && (
+                      <span className="text-purple-400">
+                        <Star className="w-3 h-3 fill-gray-500 text-gray-500" />
+                      </span>
+                    )}
+                  </div>
+
+                  {/* TICKS */}
+                  {message.senderId === authUser._id && (
+                    <div className="flex justify-end mt-1">
+                      {message.isScheduled && !message.isSent ? (
+                        <Clock className="size-4 text-yellow-500" />
+                      ) : message.isDeleted ? (
+                        <Check className="size-4 text-gray-400" />
+                      ) : message.isRead ? (
+                        <CheckCheck className="size-4 text-blue-500" />
+                      ) : (
+                        <Check className="size-4 text-gray-400" />
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -190,9 +206,7 @@ const ChatContainer = () => {
             <div
               className="px-4 py-2 text-sm hover:bg-red-500/20 text-red-400 cursor-pointer"
               onClick={() => {
-                useChatStore
-                  .getState()
-                  .deleteMessage(menu.message._id);
+                useChatStore.getState().deleteMessage(menu.message._id);
                 setMenu(null);
               }}
             >
@@ -208,6 +222,28 @@ const ChatContainer = () => {
             >
               Edit
             </div>
+
+            {/* 📌 PIN (ADDED) */}
+            <div
+              className="px-4 py-2 text-sm hover:bg-yellow-500/20 text-yellow-400 cursor-pointer"
+              onClick={() => {
+                pinMessage(menu.message._id);
+                setMenu(null);
+              }}
+            >
+              {menu.message.pinned ? "Unpin" : "Pin"}
+            </div>
+
+            {/* ⭐ STAR (ADDED) */}
+            <div
+              className="px-4 py-2 text-sm hover:bg-purple-500/20 text-purple-400 cursor-pointer"
+              onClick={() => {
+                starMessage(menu.message._id);
+                setMenu(null);
+              }}
+            >
+              {menu.message.starred ? "Unstarred" : "Starred"}
+            </div>
           </div>
         )}
 
@@ -217,10 +253,7 @@ const ChatContainer = () => {
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
             onClick={() => setOpenImage(null)}
           >
-            <img
-              src={openImage}
-              className="max-h-[90%] rounded-lg"
-            />
+            <img src={openImage} className="max-h-[90%] rounded-lg" />
           </div>
         )}
 
@@ -232,10 +265,7 @@ const ChatContainer = () => {
         )}
       </div>
 
-      <MessageInput
-        editingMsg={editingMsg}
-        setEditingMsg={setEditingMsg}
-      />
+      <MessageInput editingMsg={editingMsg} setEditingMsg={setEditingMsg} />
     </div>
   );
 };
