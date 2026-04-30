@@ -216,12 +216,22 @@ export const useChatStore = create((set, get) => ({
 
     socket.on("newMessageNotification", (data) => {
       const { addNotification ,selectedUser} = get();
+      const myId = useAuthStore.getState().authUser?._id?.toString();
+
+       if (
+         data.senderId?.toString() !== myId &&
+         data.receiverId?.toString() !== myId
+       ) {
+         return; // ignore чужe messages
+       }
 
       console.log("🔥 NOTIFICATION RECEIVED:", data);
 
       // 🔥 check if chat is open
   const isChatOpen =
-    selectedUser?._id?.toString() === data.senderId?.toString();
+    selectedUser &&
+    (selectedUser._id?.toString() === data.senderId?.toString() ||
+      selectedUser._id?.toString() === data.receiverId?.toString());
 
       // 🔔 UI notification (ALWAYS WORKS)
       if (!isChatOpen) {
@@ -263,8 +273,16 @@ export const useChatStore = create((set, get) => ({
     socket.off("newMessage");
 
     socket.on("newMessage", (newMessage) => {
+       const myId = useAuthStore.getState().authUser?._id?.toString();
+
+       // ❗️❗️❗️ MOST IMPORTANT FIX
+       if (
+         newMessage.senderId?.toString() !== myId &&
+         newMessage.receiverId?.toString() !== myId
+       ) {
+         return; // ignore чужe messages
+       }
       const { selectedUser } = get();
-      const myId = useAuthStore.getState().authUser?._id?.toString();
 
       const isChatOpen =
         selectedUser &&

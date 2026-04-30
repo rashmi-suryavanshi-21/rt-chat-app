@@ -43,7 +43,7 @@ const UserProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen  flex items-center justify-center">
+      <div className="min-h-screen bg-base-200 flex items-center justify-center">
         Loading profile...
       </div>
     );
@@ -51,7 +51,7 @@ const UserProfilePage = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-base-200 flex items-center justify-center">
         User not found
       </div>
     );

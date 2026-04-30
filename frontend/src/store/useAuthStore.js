@@ -82,7 +82,7 @@ export const useAuthStore = create((set, get) => ({
       if (data.profilePic) {
         toast.success("Profile picture updated");
       } else if (data.bio !== undefined) {
-        toast.success("Bio updated");
+        toast.success("Update Successful");
       } else {
         toast.success("Profile updated successfully");
       }

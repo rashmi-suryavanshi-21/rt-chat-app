@@ -5,16 +5,26 @@ import { useNavigate } from "react-router-dom";
 
 const ProfilePage = () => {
   const { authUser, isUpdatingProfile, updateProfile } = useAuthStore();
+
   const [selectedImg, setSelectedImg] = useState(null);
-  const [isEditingBio, setIsEditingBio] = useState(false);
-  const [bio, setBio] = useState(authUser?.bio || "");
   const [showImage, setShowImage] = useState(false);
+
+  // 🔥 EDIT STATE (ALL IN ONE)
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+  const [formData, setFormData] = useState({
+    fullName: authUser?.fullName || "",
+    username: authUser?.username || "",
+    bio: authUser?.bio || "",
+  });
+
   const navigate = useNavigate();
 
-  const handleBioSave = async () => {
+  // 🔥 SAVE ALL (NAME + USERNAME + BIO)
+  const handleProfileSave = async () => {
     try {
-      await updateProfile({ bio });
-      setIsEditingBio(false);
+      await updateProfile(formData);
+      setIsEditingProfile(false);
     } catch (err) {
       console.log(err);
     }
@@ -25,7 +35,6 @@ const ProfilePage = () => {
     if (!file) return;
 
     const reader = new FileReader();
-
     reader.readAsDataURL(file);
 
     reader.onload = async () => {
@@ -44,16 +53,26 @@ const ProfilePage = () => {
     <div className="h-screen pt-20">
       <div className="max-w-2xl mx-auto p-4 py-8">
         <div className="bg-base-300 rounded-2xl shadow-lg p-6 space-y-4 relative">
+
           {/* Close Button */}
           <button
             onClick={() => navigate(-1)}
-            className="absolute top-4 right-4 "
+            className="absolute top-4 right-4"
           >
             <X className="w-5 h-5" />
           </button>
 
-          {/* avatar upload section */}
+          {/* 🔥 EDIT BUTTON */}
+          {!isEditingProfile && (
+            <button
+              onClick={() => setIsEditingProfile(true)}
+              className="btn btn-sm btn-outline absolute top-4 left-4"
+            >
+              Edit
+            </button>
+          )}
 
+          {/* Avatar */}
           <div className="flex flex-col items-center gap-4">
             <div className="relative cursor-pointer">
               {selectedImg || authUser.profilePic ? (
@@ -70,19 +89,13 @@ const ProfilePage = () => {
               )}
 
               <label
-                htmlFor="avatar-upload"
-                className={`
-                  absolute bottom-0 right-0 
-                  bg-base-content hover:scale-105
-                  p-2 rounded-full cursor-pointer 
-                  transition-all duration-200
-                  ${isUpdatingProfile ? "animate-pulse pointer-events-none" : ""}
-                `}
+                className={`absolute bottom-0 right-0 bg-base-content p-2 rounded-full cursor-pointer ${
+                  isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
+                }`}
               >
                 <Camera className="w-5 h-5 text-base-200" />
                 <input
                   type="file"
-                  id="avatar-upload"
                   className="hidden"
                   accept="image/*"
                   onChange={handleImageUpload}
@@ -90,95 +103,117 @@ const ProfilePage = () => {
                 />
               </label>
             </div>
+
             {showImage && (
               <div
                 className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
                 onClick={() => setShowImage(false)}
               >
-                <div className="w-screen h-screen flex items-center justify-center">
-                  <img
-                    src={selectedImg || authUser.profilePic}
-                    className="w-auto h-auto max-w-none max-h-none"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
+                <img
+                  src={selectedImg || authUser.profilePic}
+                  className="max-w-full max-h-full"
+                />
               </div>
             )}
+
             <p className="text-sm text-zinc-400">
-              {isUpdatingProfile ? "Uploading..." : "Click the camera icon to update your photo"}
+              {isUpdatingProfile
+                ? "Uploading..."
+                : "Click the camera icon to update your photo"}
             </p>
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Full Name
-              </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.fullName}</p>
+          {/* 🔥 FULL NAME */}
+          <div className="space-y-1.5">
+            <div className="text-sm text-zinc-400 flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Full Name
             </div>
 
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                Email Address
-              </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.email}</p>
-            </div>
+            {isEditingProfile ? (
+              <input
+                value={formData.fullName}
+                onChange={(e) =>
+                  setFormData({ ...formData, fullName: e.target.value })
+                }
+                className="input input-bordered w-full"
+              />
+            ) : (
+              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
+                {authUser?.fullName}
+              </p>
+            )}
           </div>
-          {/* Username */}
+
+          {/* 🔥 USERNAME */}
           <div className="space-y-1.5">
             <div className="text-sm text-zinc-400 flex items-center gap-2">
               <User className="w-4 h-4" />
               Username
             </div>
-            <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
-              @{authUser?.username || "not_set"}
-            </p>
-          </div>
-          {/* Bio Section */}
 
-          {/* ✅ Show Add Button when no bio */}
-          {!authUser?.bio && !isEditingBio && (
+            {isEditingProfile ? (
+              <input
+                value={formData.username}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
+                }
+                className="input input-bordered w-full"
+              />
+            ) : (
+              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
+                @{authUser?.username || "not_set"}
+              </p>
+            )}
+          </div>
+
+          {/* 🔥 BIO (NOW SAME EDIT MODE) */}
+          <div className="space-y-1.5">
+            <div className="text-sm text-zinc-400 flex items-center gap-2">
+              <User className="w-4 h-4" />
+              About
+            </div>
+
+            {isEditingProfile ? (
+              <textarea
+                value={formData.bio}
+                onChange={(e) =>
+                  setFormData({ ...formData, bio: e.target.value })
+                }
+                className="textarea textarea-bordered w-full"
+                placeholder="Write something..."
+              />
+            ) : (
+              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
+                {authUser?.bio || "No bio added"}
+              </p>
+            )}
+          </div>
+
+          {/* 🔥 SAVE BUTTON */}
+          {isEditingProfile && (
             <button
-              onClick={() => setIsEditingBio(true)}
-              className="btn btn-sm btn-outline"
+              onClick={handleProfileSave}
+              className="btn btn-primary w-full"
             >
-              + Add Bio
+              Save Changes
             </button>
           )}
-          {/* Bio Section */}
-          {(authUser?.bio || isEditingBio) && (
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
-                <User className="w-4 h-4" />
-                About
-              </div>
 
-              {!isEditingBio ? (
-                <p
-                  onClick={() => setIsEditingBio(true)}
-                  className="px-4 py-2.5 bg-base-200 rounded-lg border cursor-pointer hover:bg-base-300 transition"
-                >
-                  {authUser?.bio}
-                </p>
-              ) : (
-                <input
-                  type="text"
-                  autoFocus
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  onBlur={handleBioSave}
-                  onKeyDown={(e) => e.key === "Enter" && handleBioSave()}
-                  className="input input-bordered w-full"
-                  placeholder="Write something..."
-                />
-              )}
+          {/* Email */}
+          <div className="space-y-1.5">
+            <div className="text-sm text-zinc-400 flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Email Address
             </div>
-          )}
+            <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
+              {authUser?.email}
+            </p>
+          </div>
 
+          {/* Account Info */}
           <div className="mt-6 bg-base-200 shadow-mid rounded-xl p-6">
-            <h2 className="text-lg font-medium  mb-4">Account Information</h2>
+            <h2 className="text-lg font-medium mb-4">Account Information</h2>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between py-2 border-b border-zinc-700">
                 <span>Member Since</span>
@@ -190,9 +225,11 @@ const ProfilePage = () => {
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>
   );
 };
+
 export default ProfilePage;

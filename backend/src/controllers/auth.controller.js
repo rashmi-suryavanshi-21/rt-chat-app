@@ -138,24 +138,38 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic, bio } = req.body; // ✅ added bio
+    const { profilePic, bio, fullName, username } = req.body; // 🔥 ADD THESE
     const userId = req.user._id;
 
     let updatedFields = {};
 
-    // ✅ EXISTING LOGIC (UNCHANGED)
+    // ✅ profile pic
     if (profilePic) {
       const uploadResponse = await cloudinary.uploader.upload(profilePic);
       updatedFields.profilePic = uploadResponse.secure_url;
     }
 
-    // ✅ NEW BIO LOGIC (SAFE ADDITION)
+    // ✅ bio
     if (bio !== undefined) {
       updatedFields.bio = bio;
     }
 
+    // 🔥 ADD THESE
+    if (fullName !== undefined) {
+      updatedFields.fullName = fullName;
+    }
+
+    if (username !== undefined) {
+      updatedFields.username = username;
+    }
+
     // ❌ only throw error if NOTHING provided
-    if (!profilePic && bio === undefined) {
+    if (
+      !profilePic &&
+      bio === undefined &&
+      fullName === undefined &&
+      username === undefined
+    ) {
       return res.status(400).json({ message: "No data provided to update" });
     }
 

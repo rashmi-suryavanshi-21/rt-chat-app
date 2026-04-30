@@ -168,10 +168,20 @@ console.log("receiverSocketId:", receiverSocketId);
 console.log("notificationPayload:", notificationPayload);
 
     // 🔥 IMPORTANT FIX (SIDEBAR REALTIME UPDATE)
-    io.emit("sidebarUpdate", {
-      userId: receiverId,
-      message: populated,
-    });
+
+   if (receiverSocketId) {
+     io.to(receiverSocketId).emit("sidebarUpdate", {
+       userId: senderId,
+       message: populated,
+     });
+   }
+
+   if (senderSocketId) {
+     io.to(senderSocketId).emit("sidebarUpdate", {
+       userId: receiverId,
+       message: populated,
+     });
+   }
 
     res.status(201).json(populated);
   } catch (error) {

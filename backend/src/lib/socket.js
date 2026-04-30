@@ -72,14 +72,18 @@ socket.on("sendMessage", async ({ message, receiverId, senderName }) => {
 
   const payload = {
     senderId: userId,
+    receiverId,
     senderName,
     message,
   };
 
-  // अगर user online है तो real-time notification भेजो
+  // receiver ko
   if (receiverSocketId) {
     io.to(receiverSocketId).emit("newMessageNotification", payload);
   }
+
+  // sender ko bhi
+  socket.emit("newMessageNotification", payload);
 });
 console.log("HANDSHAKE USERID:", socket.handshake.query.userId);
 

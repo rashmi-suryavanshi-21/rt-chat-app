@@ -15,8 +15,14 @@ import { useEffect } from "react";
 import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 const App = () => {
+ 
+
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
   const { theme } = useThemeStore();
+
+  useEffect(() => {
+   document.documentElement.setAttribute("data-theme", theme);
+ }, [theme]);
 
   console.log({ onlineUsers });
 
@@ -40,14 +46,14 @@ useEffect(() => {
 // }, []);
   if (isCheckingAuth && !authUser)
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-base-200">
         <Loader className="size-10 animate-spin" />
       </div>
     );
 
  
   return (
-    <div data-theme={theme}>
+    <div className="min-h-screen">
       <Navbar />
     
       <Routes>
