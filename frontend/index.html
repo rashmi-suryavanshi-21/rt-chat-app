@@ -9,5 +9,12 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+  window.addEventListener("error", function (e) {
+    if (e.target.tagName === "AUDIO") {
+      e.preventDefault();
+    }
+  }, true);
+</script>
   </body>
 </html>

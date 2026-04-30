@@ -3,9 +3,24 @@ import { useAuthStore } from "../store/useAuthStore";
 import { LogOut, MessageSquare, Settings, Palette } from "lucide-react";
 import { User } from "lucide-react";
 import Avatar from "./Avatar";
+
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
 
+  const testSound = () => {
+  const audio = new Audio("/sound/notification.mp3");
+
+  audio.volume = 1;
+  audio.currentTime = 0;
+
+  audio.play()
+    .then(() => {
+      console.log("🔊 SOUND WORKING");
+    })
+    .catch((err) => {
+      console.log("❌ SOUND FAILED:", err);
+    });
+};
   return (
     <header
       className="

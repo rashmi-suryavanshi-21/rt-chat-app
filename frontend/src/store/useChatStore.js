@@ -2,6 +2,7 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
+import { playNotificationSound } from "../lib/notificationSound";
 
 export const useChatStore = create((set, get) => ({
   messages: [],
@@ -181,24 +182,24 @@ export const useChatStore = create((set, get) => ({
   },
 
   pinMessage: async (messageId) => {
-  const res = await axiosInstance.put(`/messages/pin/${messageId}`);
+    const res = await axiosInstance.put(`/messages/pin/${messageId}`);
 
-  set((state) => ({
-    messages: state.messages.map((m) =>
-      m._id === messageId ? res.data : m
-    ),
-  }));
-},
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m._id === messageId ? res.data : m
+      ),
+    }));
+  },
 
-starMessage: async (messageId) => {
-  const res = await axiosInstance.put(`/messages/star/${messageId}`);
+  starMessage: async (messageId) => {
+    const res = await axiosInstance.put(`/messages/star/${messageId}`);
 
-  set((state) => ({
-    messages: state.messages.map((m) =>
-      m._id === messageId ? res.data : m
-    ),
-  }));
-},
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m._id === messageId ? res.data : m
+      ),
+    }));
+  },
 
   // =========================
   // SOCKET
@@ -253,6 +254,7 @@ starMessage: async (messageId) => {
     (selectedUser._id?.toString() === data.senderId?.toString() ||
       selectedUser._id?.toString() === data.receiverId?.toString());
 
+      
       // 🔔 UI notification (ALWAYS WORKS)
       if (!isChatOpen) {
       toast.success(`${data.senderName}: ${data.message}`);
@@ -263,6 +265,9 @@ starMessage: async (messageId) => {
         message: data.message,
         image: data.image || null,
       });
+        // 🔊 SOUND ADD HERE
+    playNotificationSound();
+
       // 🧠 Request focus change (helps Chrome show notification)
       try {
         window.blur();
@@ -287,21 +292,22 @@ starMessage: async (messageId) => {
     }
     });
 
+
     // =========================
     // NEW MESSAGE
     // =========================
     socket.off("newMessage");
 
     socket.on("newMessage", (newMessage) => {
-       const myId = useAuthStore.getState().authUser?._id?.toString();
+      const myId = useAuthStore.getState().authUser?._id?.toString();
 
-       // ❗️❗️❗️ MOST IMPORTANT FIX
-       if (
-         newMessage.senderId?.toString() !== myId &&
-         newMessage.receiverId?.toString() !== myId
-       ) {
-         return; // ignore чужe messages
-       }
+      // ❗️❗️❗️ MOST IMPORTANT FIX
+      if (
+        newMessage.senderId?.toString() !== myId &&
+        newMessage.receiverId?.toString() !== myId
+      ) {
+        return; // ignore чужe messages
+      }
       const { selectedUser } = get();
 
       const isChatOpen =
