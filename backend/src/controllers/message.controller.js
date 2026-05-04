@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
+import mongoose from "mongoose";
 
 // =========================
 // GET USERS (SIDEBAR)
@@ -48,11 +49,11 @@ export const getUsersForSidebar = async (req, res) => {
           updatedAt: lastMsg?.createdAt || user.createdAt,
           unreadCount,
         };
-      })
+      }),
     );
 
     usersWithLastMsg.sort(
-      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
     );
 
     res.status(200).json(usersWithLastMsg);
@@ -75,7 +76,7 @@ export const getMessages = async (req, res) => {
         receiverId: myId,
         isRead: false,
       },
-      { isRead: true }
+      { isRead: true },
     );
 
     const messages = await Message.find({
@@ -161,27 +162,30 @@ export const sendMessage = async (req, res) => {
     };
 
     // 🔔 NOTIFICATION EVENT (THIS IS MISSING LINK)
-if (receiverSocketId) {
-  io.to(receiverSocketId).emit("newMessageNotification", notificationPayload);
-}
-console.log("receiverSocketId:", receiverSocketId);
-console.log("notificationPayload:", notificationPayload);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit(
+        "newMessageNotification",
+        notificationPayload,
+      );
+    }
+    console.log("receiverSocketId:", receiverSocketId);
+    console.log("notificationPayload:", notificationPayload);
 
     // 🔥 IMPORTANT FIX (SIDEBAR REALTIME UPDATE)
 
-   if (receiverSocketId) {
-     io.to(receiverSocketId).emit("sidebarUpdate", {
-       userId: senderId,
-       message: populated,
-     });
-   }
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("sidebarUpdate", {
+        userId: senderId,
+        message: populated,
+      });
+    }
 
-   if (senderSocketId) {
-     io.to(senderSocketId).emit("sidebarUpdate", {
-       userId: receiverId,
-       message: populated,
-     });
-   }
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("sidebarUpdate", {
+        userId: receiverId,
+        message: populated,
+      });
+    }
 
     res.status(201).json(populated);
   } catch (error) {
@@ -254,11 +258,20 @@ export const deleteMessage = async (req, res) => {
 export const updateMessage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { text } = req.body;
+    let { text } = req.body;
+
+    // ✅ FORCE STRING
+    text = typeof text === "string" ? text : "";
+
+    if (!text.trim()) {
+      return res.status(400).json({ error: "Text required" });
+    }
 
     const message = await Message.findById(id);
 
-    if (!message) return res.status(404).json({ error: "Not found" });
+    if (!message) {
+      return res.status(404).json({ error: "Not found" });
+    }
 
     if (message.senderId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: "Not allowed" });
@@ -271,20 +284,23 @@ export const updateMessage = async (req, res) => {
 
     const updatedMessage = await Message.findById(id);
 
-    // 🔥 REALTIME FIX (IMPORTANT)
-    io.to(getReceiverSocketId(message.receiverId)).emit(
-      "messageUpdated",
-      updatedMessage
+    const receiverSocketId = getReceiverSocketId(
+      message.receiverId?.toString(),
     );
+    const senderSocketId = getReceiverSocketId(message.senderId?.toString());
 
-    io.to(getReceiverSocketId(message.senderId)).emit(
-      "messageUpdated",
-      updatedMessage
-    );
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageUpdated", updatedMessage);
+    }
 
-    res.status(200).json(updatedMessage);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("messageUpdated", updatedMessage);
+    }
+
+    return res.status(200).json(updatedMessage);
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    console.log("🔥 UPDATE ERROR:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 };
 
@@ -309,13 +325,53 @@ export const toggleStarMessage = async (req, res) => {
     const { messageId } = req.params;
 
     const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ error: "Not found" });
 
     message.starred = !message.starred;
 
     await message.save();
 
+    const receiverSocketId = getReceiverSocketId(
+      message.receiverId?.toString(),
+    );
+    const senderSocketId = getReceiverSocketId(message.senderId?.toString());
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageStarred", message);
+    }
+    console.log("receiver socket:", receiverSocketId);
+
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("messageStarred", message);
+    }
+
     res.status(200).json(message);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+export const getStarredMessages = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+    console.log("STARRED API HIT");
+console.log("USER:", req.user._id);
+
+    const messages = await Message.find({
+      starred: true,
+      $or: [
+        { senderId: userId },
+        { receiverId: userId }
+      ]
+    })
+    .populate("senderId", "username fullName profilePic")
+    .populate("receiverId", "username fullName profilePic")
+    .sort({ createdAt: -1 });
+
+    res.status(200).json(messages);
+  } catch (err) {
+    console.log("STARRED ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };

@@ -168,14 +168,10 @@ export const useChatStore = create((set, get) => ({
   // UPDATE MESSAGE (FIXED)
   // =========================
   updateMessage: async (id, text) => {
+    console.log("DEBUG UPDATE TEXT 👉", text);
     try {
-      const res = await axiosInstance.put(`/messages/update/${id}`, { text });
+      const res = await axiosInstance.put(`/messages/update/${id}`, {  text: String(text)});
 
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === id ? { ...m, ...res.data, isEdited: true } : m,
-        ),
-      }));
     } catch {
       toast.error("Update failed");
     }
@@ -199,7 +195,26 @@ export const useChatStore = create((set, get) => ({
         m._id === messageId ? res.data : m
       ),
     }));
+
+    
   },
+
+  getStarredMessages: async () => {
+  try {
+    const res = await axiosInstance.get("/messages/starred");
+    return res.data;
+  } catch (err) {
+    console.log("Starred fetch error", err);
+    return [];
+  }
+
+
+},
+
+highlightId: null,
+
+setHighlightId: (id) => set({ highlightId: id }),
+clearHighlightId: () => set({ highlightId: null }),
 
   // =========================
   // SOCKET
@@ -370,7 +385,7 @@ export const useChatStore = create((set, get) => ({
           u._id === senderId ? { ...u, unreadCount: 0 } : u,
         ),
         messages: state.messages.map((m) =>
-          m.senderId === senderId ? { ...m, isRead: true } : m,
+         (m.senderId?._id || m.senderId).toString() === senderId.toString() ? { ...m, isRead: true } : m,
         ),
       }));
     });
@@ -428,6 +443,29 @@ export const useChatStore = create((set, get) => ({
         ),
       }));
     });
+
+   socket.off("messagePinned");
+
+   socket.on("messagePinned", (updatedMsg) => {
+     set((state) => ({
+       messages: state.messages.map((m) =>
+         m._id === updatedMsg._id ? updatedMsg : m,
+       ),
+     }));
+   });
+
+   socket.off("messageStarred");
+
+socket.on("messageStarred", (updatedMsg) => {
+  set((state) => ({
+    messages: state.messages.map((m) =>
+      String(m._id) === String(updatedMsg._id)
+        ? updatedMsg   // 🔥 FULL REPLACE (NOT PARTIAL)
+        : m
+    ),
+  }));
+});
+
   },
 
   unsubscribeFromMessages: () => {

@@ -128,6 +128,30 @@ console.log("HANDSHAKE USERID:", socket.handshake.query.userId);
     io.to(receiverSocketId).emit("messageUpdated", message);
   });
 
+  socket.on("scheduledMessageSent", async ({ messageId, receiverId }) => {
+  try {
+    const updatedMessage = await Message.findByIdAndUpdate(
+      messageId,
+      {
+        isSent: true,
+        sentAt: new Date(),
+      },
+      { new: true }
+    );
+
+    const receiverSocketId = userSocketMap[receiverId];
+
+    if (receiverSocketId && updatedMessage) {
+      io.to(receiverSocketId).emit("messageSent", updatedMessage);
+    }
+
+    // optional: sender ko bhi update bhej do
+    socket.emit("messageSent", updatedMessage);
+  } catch (err) {
+    console.log("scheduledMessageSent error:", err);
+  }
+});
+
   // =========================
   // DISCONNECT
   // =========================

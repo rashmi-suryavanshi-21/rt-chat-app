@@ -3,9 +3,14 @@ import { useAuthStore } from "../store/useAuthStore";
 import { LogOut, MessageSquare, Settings, Palette } from "lucide-react";
 import { User } from "lucide-react";
 import Avatar from "./Avatar";
+import { Star } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const testSound = () => {
   const audio = new Audio("/sound/notification.mp3");
@@ -21,6 +26,12 @@ const Navbar = () => {
       console.log("❌ SOUND FAILED:", err);
     });
 };
+ useEffect(() => {
+    const close = () => setMenuOpen(false);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, []);
+
   return (
     <header
       className="
@@ -32,7 +43,6 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-
           {/* Logo */}
           <Link
             to="/"
@@ -50,7 +60,6 @@ const Navbar = () => {
           {/* Right Section */}
           {authUser && (
             <div className="flex items-center gap-3">
-
               {/* Profile */}
               <Link
                 to="/profile"
@@ -77,42 +86,64 @@ const Navbar = () => {
                     "
                     />
                   </div>
-
                 </div>
                 <span className="hidden sm:inline font-medium">
                   {authUser?.fullName}
                 </span>
               </Link>
 
-              {/* Settings */}
-              <Link
-                to="/settings"
-                className="
-                btn btn-sm 
-                btn-ghost
-                gap-2
-                hover:bg-base-200
-                "
-              >
-                <Palette className="w-4 h-4" />
-                <span className="hidden sm:inline">Themes</span>
-              </Link>
+              {/* 3 DOT MENU */}
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
 
-              {/* Logout */}
-              <button
-                onClick={logout}
-                className="
-                btn btn-sm 
-                btn-error 
-                btn-outline
-                gap-2
-                hover:scale-105
-                transition-all
-                "
-              >
-                <LogOut className="size-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
+                <button
+                  onClick={() => setMenuOpen((p) => !p)}
+                  className="btn btn-ghost btn-sm"
+                >
+                  ⋮
+                </button>
+
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-44 bg-base-200 rounded-lg shadow-lg z-50 overflow-hidden">
+
+                    {/* STARRED */}
+                    <button
+                      onClick={() => {
+                        navigate("/starred");
+                        setMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2"
+                    >
+                      <Star className="w-4 h-4" />
+                      Starred
+                    </button>
+
+                    {/* THEMES */}
+                    <button
+                      onClick={() => {
+                        navigate("/settings");
+                        setMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2"
+                    >
+                      <Palette className="w-4 h-4" />
+                      Themes
+                    </button>
+
+                    {/* LOGOUT */}
+                    <button
+                      onClick={() => {
+                        logout();
+                        setMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-red-500/10 text-red-400 flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+
+                  </div>
+                )}
+              </div>
 
             </div>
           )}
