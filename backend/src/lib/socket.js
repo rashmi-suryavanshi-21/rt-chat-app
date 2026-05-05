@@ -2,7 +2,7 @@ import { Server } from "socket.io";
 import http from "http";
 import express from "express";
 import Message from "../models/message.model.js";
-
+import User from "../models/user.model.js";
 const app = express();
 const server = http.createServer(app);
 
@@ -84,6 +84,12 @@ socket.on("sendMessage", async ({ message, receiverId, senderName }) => {
 
   // sender ko bhi
   socket.emit("newMessageNotification", payload);
+   // ✅ STEP 1: check if receiver is bot
+  const receiver = await User.findById(receiverId);
+
+  if (receiver?.isBot) {
+    console.log("Message sent to BOT:", message);
+  }
 });
 console.log("HANDSHAKE USERID:", socket.handshake.query.userId);
 

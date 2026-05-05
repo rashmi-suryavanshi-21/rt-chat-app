@@ -208,9 +208,8 @@ const ChatContainer = () => {
                   {pinnedMessages.map((_, i) => (
                     <div
                       key={i}
-                      className={`w-[3px] h-[12px] rounded-full transition-all ${
-                        i === pinIndex ? "bg-blue-500" : "bg-gray-400/40"
-                      }`}
+                      className={`w-[3px] h-[12px] rounded-full transition-all ${i === pinIndex ? "bg-blue-500" : "bg-gray-400/40"
+                        }`}
                     />
                   ))}
                 </div>
@@ -240,12 +239,11 @@ const ChatContainer = () => {
           <div
             key={message._id}
             id={message._id}
-            className={`chat ${isMyMsg(message) ? "chat-end" : "chat-start"} ${
-              highlightId === message._id
+            className={`chat ${isMyMsg(message) ? "chat-end" : "chat-start"} ${highlightId === message._id
                 ? "bg-yellow-400/30 scale-[1.02] rounded-lg p-1 transition-all duration-300"
                 : ""
-            }`}
-             onContextMenu={(e) => {
+              }`}
+            onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();
 
@@ -334,6 +332,8 @@ const ChatContainer = () => {
                       <Clock className="size-4 text-yellow-500" />
                     ) : message.isDeleted ? (
                       <Check className="size-4 text-gray-400" />
+                    ) : selectedUser?.isBot ? (
+                      <CheckCheck className="size-4 text-blue-500" />
                     ) : message.isRead ? (
                       <CheckCheck className="size-4 text-blue-500" />
                     ) : (

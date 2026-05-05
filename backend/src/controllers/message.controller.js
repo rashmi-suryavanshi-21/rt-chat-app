@@ -3,6 +3,7 @@ import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import mongoose from "mongoose";
+import { generateBotReply } from "../lib/bot.js";
 
 // =========================
 // GET USERS (SIDEBAR)
@@ -137,7 +138,28 @@ export const sendMessage = async (req, res) => {
     });
 
     const populated = await Message.findById(newMessage._id);
+    // 🤖 BOT REPLY (STEP 2)
+// =========================
+const receiver = await User.findById(receiverId);
 
+if (receiver?.isBot) {
+  setTimeout(async () => {
+    const botReply = await generateBotReply(text, senderId, receiverId);
+
+    const botMessage = await Message.create({
+      senderId: receiverId, // bot is sender
+      receiverId: senderId,
+      text: botReply,
+      isRead: false,
+    });
+
+    const senderSocketId = getReceiverSocketId(senderId);
+
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("newMessage", botMessage);
+    }
+  }, 800);
+}
     const receiverSocketId = getReceiverSocketId(receiverId);
     const senderSocketId = getReceiverSocketId(senderId);
 
