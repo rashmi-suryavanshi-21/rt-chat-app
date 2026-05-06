@@ -23,6 +23,7 @@ export const getUsersForSidebar = async (req, res) => {
             { senderId: loggedInUserId, receiverId: user._id },
             { senderId: user._id, receiverId: loggedInUserId },
           ],
+          deletedFor: { $ne: loggedInUserId },
         })
           .sort({ createdAt: -1 })
           .lean();
@@ -31,6 +32,7 @@ export const getUsersForSidebar = async (req, res) => {
           senderId: user._id,
           receiverId: loggedInUserId,
           isRead: false,
+          deletedFor: { $ne: loggedInUserId }, 
         });
 
         let lastMessageText = "No messages yet";
@@ -62,10 +64,33 @@ export const getUsersForSidebar = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+export const clearChat = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { id: userToChatId } = req.params;
 
-// =========================
+    // ✅ ONLY THIS NEEDED
+    await Message.updateMany(
+      {
+        $or: [
+          { senderId: myId, receiverId: userToChatId },
+          { senderId: userToChatId, receiverId: myId },
+        ],
+      },
+      {
+        $addToSet: { deletedFor: myId },
+      }
+    );
+
+    res.status(200).json({ message: "Chat cleared" });
+
+  } catch (error) {
+    console.log("Clear chat error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 // GET MESSAGES
-// =========================
 export const getMessages = async (req, res) => {
   try {
     const { id: userToChatId } = req.params;
@@ -85,6 +110,8 @@ export const getMessages = async (req, res) => {
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
+      deletedFor: { $ne: myId } //for clear chat
+      
     }).sort({ createdAt: 1 });
 
     const senderSocketId = getReceiverSocketId(userToChatId);
@@ -110,9 +137,7 @@ export const getMessages = async (req, res) => {
   }
 };
 
-// =========================
 // SEND MESSAGE
-// =========================
 export const sendMessage = async (req, res) => {
   try {
     const { text, image } = req.body;
@@ -139,7 +164,6 @@ export const sendMessage = async (req, res) => {
 
     const populated = await Message.findById(newMessage._id);
     // 🤖 BOT REPLY (STEP 2)
-// =========================
 const receiver = await User.findById(receiverId);
 
 if (receiver?.isBot) {

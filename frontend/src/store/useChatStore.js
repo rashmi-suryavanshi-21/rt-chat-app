@@ -482,4 +482,5 @@ socket.on("messageStarred", (updatedMsg) => {
   },
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),
+  setMessages: (messages) => set({ messages }), 
 }));

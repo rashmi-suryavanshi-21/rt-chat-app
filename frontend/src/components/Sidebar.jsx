@@ -141,8 +141,8 @@ const Sidebar = () => {
                       deleted
                     </span>
                   ) : user.lastMessage ? (
-                    user.lastMessage.length > 15
-                      ? user.lastMessage.slice(0, 15) + "..."
+                    user.lastMessage.length > 25
+                      ? user.lastMessage.slice(0, 25) + "..."
                       : user.lastMessage
                   ) : (
                     "No messages yet"
