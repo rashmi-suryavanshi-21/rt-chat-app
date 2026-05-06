@@ -12,6 +12,7 @@ import messageRoutes from "./routes/message.route.js";
 import healthRoutes from "./routes/health.route.js";
 import { app, server } from "./lib/socket.js";
 import userRoutes from "./routes/user.route.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 import { startCronJobs } from "./lib/cronJobs.js";
 
 startCronJobs();
@@ -38,6 +39,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/health", healthRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // app.use(express.json({ limit: "10mb" }));
 // console.log(process.env.CLOUDINARY_CLOUD_NAME)

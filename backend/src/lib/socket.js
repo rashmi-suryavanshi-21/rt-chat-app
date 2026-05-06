@@ -1,8 +1,9 @@
-import { Server } from "socket.io";
+ import { Server } from "socket.io";
 import http from "http";
 import express from "express";
 import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
+
 const app = express();
 const server = http.createServer(app);
 
@@ -15,12 +16,13 @@ const io = new Server(server, {
 
 // 🔥 socket map
 const userSocketMap = {};
+let onlineUsers = new Set();
 
 export function getReceiverSocketId(userId) {
   return userSocketMap[userId];
 }
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   const userId = socket.handshake.query.userId;
 
   if (!userId) {
@@ -30,21 +32,105 @@ io.on("connection", (socket) => {
 
   console.log("User connected:", userId, socket.id);
 
-  // store socket
-  userSocketMap[userId] = socket.id;
-  socket.userId = userId;
+  // =========================
+  // 🔥 AUTO SAVE ONLINE TIME
+  // =========================
+  const interval = setInterval(async () => {
+    try {
+      const user = await User.findById(userId);
+      if (!user || !user.sessionStart) return;
 
-  io.emit("getOnlineUsers", Object.keys(userSocketMap));
-  console.log("userSocketMap:", userSocketMap);
+      const duration = Math.floor(
+        (Date.now() - new Date(user.sessionStart)) / 1000
+      );
+
+      user.totalOnlineTimeToday =
+        (user.totalOnlineTimeToday || 0) + duration;
+
+      user.totalOnlineTime =
+        (user.totalOnlineTime || 0) + duration;
+
+      user.sessionStart = new Date();
+
+      await user.save();
+    } catch (err) {
+      console.log("Auto save error:", err);
+    }
+  }, 60000);
 
   // =========================
-  // TYPING
+  // 🔥 USER ONLINE SET
+  // =========================
+  try {
+    const user = await User.findById(userId);
+
+    if (user) {
+      const today = new Date().toDateString();
+
+      if (user.lastActiveDate !== today) {
+        user.totalOnlineTimeToday = 0;
+        user.lastActiveDate = today;
+      }
+
+      user.isOnline = true;
+      user.sessionStart = new Date();
+      user.lastSeen = new Date();
+
+      await user.save();
+    }
+  } catch (err) {
+    console.log("User update error:", err);
+  }
+
+  // =========================
+  // 🔥 STORE SOCKET
+  // =========================
+  userSocketMap[userId] = socket.id;
+  socket.userId = userId;
+  onlineUsers.add(userId);
+
+  io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  io.emit("onlineUsersCount", onlineUsers.size);
+
+  // =========================
+  // 🔥 OPTIONAL SESSION CONTROL
+  // =========================
+  socket.on("start-chat-session", async ({ userId }) => {
+    try {
+      const user = await User.findById(userId);
+      if (user && !user.sessionStart) {
+        user.sessionStart = new Date();
+        await user.save();
+      }
+    } catch (err) {
+      console.log("session start error:", err);
+    }
+  });
+
+  socket.on("end-chat-session", async ({ userId }) => {
+    try {
+      const user = await User.findById(userId);
+      if (user && user.sessionStart) {
+        const duration = Math.floor(
+          (Date.now() - new Date(user.sessionStart)) / 1000
+        );
+
+        user.totalOnlineTime += duration;
+        user.totalOnlineTimeToday += duration;
+
+        user.sessionStart = null;
+        await user.save();
+      }
+    } catch (err) {
+      console.log("session end error:", err);
+    }
+  });
+
+  // =========================
+  // 🔥 TYPING
   // =========================
   socket.on("typing", ({ receiverId }) => {
     const receiverSocketId = userSocketMap[receiverId];
-
-    console.log("typing -> receiverSocketId:", receiverSocketId);
-
     if (!receiverSocketId) return;
 
     io.to(receiverSocketId).emit("typing", {
@@ -54,9 +140,6 @@ io.on("connection", (socket) => {
 
   socket.on("stopTyping", ({ receiverId }) => {
     const receiverSocketId = userSocketMap[receiverId];
-
-    console.log("stopTyping -> receiverSocketId:", receiverSocketId);
-
     if (!receiverSocketId) return;
 
     io.to(receiverSocketId).emit("stopTyping", {
@@ -65,41 +148,38 @@ io.on("connection", (socket) => {
   });
 
   // =========================
-// MESSAGE NOTIFICATION
-// =========================
-socket.on("sendMessage", async ({ message, receiverId, senderName }) => {
-  const receiverSocketId = userSocketMap[receiverId];
-
-  const payload = {
-    senderId: userId,
-    receiverId,
-    senderName,
-    message,
-  };
-
-  // receiver ko
-  if (receiverSocketId) {
-    io.to(receiverSocketId).emit("newMessageNotification", payload);
-  }
-
-  // sender ko bhi
-  socket.emit("newMessageNotification", payload);
-   // ✅ STEP 1: check if receiver is bot
-  const receiver = await User.findById(receiverId);
-
-  if (receiver?.isBot) {
-    console.log("Message sent to BOT:", message);
-  }
-});
-console.log("HANDSHAKE USERID:", socket.handshake.query.userId);
-
+  // 🔥 MESSAGE NOTIFICATION
   // =========================
-  // MARK AS READ
+  socket.on("sendMessage", async ({ message, receiverId, senderName }) => {
+    const receiverSocketId = userSocketMap[receiverId];
+
+    const payload = {
+      senderId: userId,
+      receiverId,
+      senderName,
+      message,
+    };
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessageNotification", payload);
+    }
+
+    socket.emit("newMessageNotification", payload);
+
+    //  step 1:check if receiver is bot 
+    const receiver=await User.findById(receiverId);
+    if(receiver?.isBot){
+      console.log("Message sent to BOT:",message);
+    }
+  });
+  console.log("HANDSHAKE USERID:", socket.handshake.query.userId);
+  // =========================
+  // 🔥 MARK AS READ
   // =========================
   socket.on("markAsRead", async ({ senderId }) => {
     const receiverId = userId;
-
     if (!senderId || !receiverId) return;
+
 
     const result = await Message.updateMany(
       { senderId, receiverId, isRead: false },
@@ -113,9 +193,11 @@ console.log("HANDSHAKE USERID:", socket.handshake.query.userId);
     }
   });
 
-   socket.on("deleteMessage", ({ messageId, receiverId }) => {
+  // =========================
+  // 🔥 DELETE MESSAGE
+  // =========================
+  socket.on("deleteMessage", ({ messageId, receiverId }) => {
     const receiverSocketId = userSocketMap[receiverId];
-
     if (!receiverSocketId) return;
 
     io.to(receiverSocketId).emit("messageDeleted", {
@@ -124,53 +206,86 @@ console.log("HANDSHAKE USERID:", socket.handshake.query.userId);
   });
 
   // =========================
-  // UPDATE MESSAGE (REALTIME)
+  // 🔥 UPDATE MESSAGE
   // =========================
   socket.on("updateMessage", ({ message, receiverId }) => {
     const receiverSocketId = userSocketMap[receiverId];
-
     if (!receiverSocketId) return;
 
     io.to(receiverSocketId).emit("messageUpdated", message);
   });
 
+  // =========================
+  // 🔥 SCHEDULED MESSAGE
+  // =========================
   socket.on("scheduledMessageSent", async ({ messageId, receiverId }) => {
-  try {
-    const updatedMessage = await Message.findByIdAndUpdate(
-      messageId,
-      {
-        isSent: true,
-        sentAt: new Date(),
-      },
-      { new: true }
-    );
+    try {
+      const updatedMessage = await Message.findByIdAndUpdate(
+        messageId,
+        {
+          isSent: true,
+          sentAt: new Date(),
+        },
+        { new: true }
+      );
 
-    const receiverSocketId = userSocketMap[receiverId];
+      const receiverSocketId = userSocketMap[receiverId];
 
-    if (receiverSocketId && updatedMessage) {
-      io.to(receiverSocketId).emit("messageSent", updatedMessage);
+      if (receiverSocketId && updatedMessage) {
+        io.to(receiverSocketId).emit("messageSent", updatedMessage);
+      }
+
+      socket.emit("messageSent", updatedMessage);
+    } catch (err) {
+      console.log("scheduledMessageSent error:", err);
     }
-
-    // optional: sender ko bhi update bhej do
-    socket.emit("messageSent", updatedMessage);
-  } catch (err) {
-    console.log("scheduledMessageSent error:", err);
-  }
-});
+  });
 
   // =========================
-  // DISCONNECT
+  // 🔥 DISCONNECT (CLEAN + FIXED)
   // =========================
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log("User disconnected:", userId);
+
+    clearInterval(interval);
 
     if (userSocketMap[userId] === socket.id) {
       delete userSocketMap[userId];
     }
 
+    onlineUsers.delete(userId);
+
+    try {
+      const user = await User.findById(userId);
+
+      if (user && user.sessionStart) {
+        const duration = Math.floor(
+          (Date.now() - new Date(user.sessionStart)) / 1000
+        );
+
+        const today = new Date().toDateString();
+
+        if (user.lastActiveDate !== today) {
+          user.totalOnlineTimeToday = 0;
+          user.lastActiveDate = today;
+        }
+
+        user.totalOnlineTimeToday += duration;
+        user.totalOnlineTime += duration;
+
+        user.sessionStart = null;
+        user.isOnline = false;
+        user.lastSeen = new Date();
+
+        await user.save();
+      }
+    } catch (err) {
+      console.log("Disconnect error:", err);
+    }
+
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    io.emit("onlineUsersCount", onlineUsers.size);
   });
 });
-
 
 export { io, app, server };

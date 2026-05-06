@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { LogOut, MessageSquare, Settings, Palette } from "lucide-react";
-import { User } from "lucide-react";
+import { LogOut, MessageSquare, Settings, Palette, User, Star, BarChart3 } from "lucide-react";
 import Avatar from "./Avatar";
-import { Star } from "lucide-react";
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -115,7 +114,21 @@ const Navbar = () => {
                     >
                       <Star className="w-4 h-4" />
                       Starred
-                    </button>
+                    </button> 
+
+                    {/* ANALYTICS 👇 ADD THIS */}
+<button
+  onClick={() => {
+    navigate(`/analytics/${authUser._id}`);
+    setMenuOpen(false);
+  }}
+  className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2"
+>
+  <BarChart3 className="w-4 h-4" />
+  Analytics
+</button>
+
+
 
                     {/* THEMES */}
                     <button

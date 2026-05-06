@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
@@ -32,9 +32,38 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
     isBot: {
-    type: Boolean,
-    default: false
-}
+  type: Boolean,
+  default: false
+},
+ // 🔥 NEW FIELDS (ADD HERE ONLY)
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
+
+
+    lastSeen: {
+      type: Date,
+      default:null
+    },
+
+    totalOnlineTime: {
+      type: Number,
+      default: 0,
+    },
+
+sessionStart: {
+      type: Date,
+    },
+    totalOnlineTimeToday: {
+  type: Number,
+  default: 0,
+},
+ lastActiveDate: {
+    type: String,
+    default: null,
+  },
+
   },
   { timestamps: true }
 );
