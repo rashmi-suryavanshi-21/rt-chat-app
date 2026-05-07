@@ -32,7 +32,7 @@ export const getUsersForSidebar = async (req, res) => {
           senderId: user._id,
           receiverId: loggedInUserId,
           isRead: false,
-          deletedFor: { $ne: loggedInUserId }, 
+          deletedFor: { $ne: loggedInUserId },
         });
 
         let lastMessageText = "No messages yet";
@@ -79,11 +79,10 @@ export const clearChat = async (req, res) => {
       },
       {
         $addToSet: { deletedFor: myId },
-      }
+      },
     );
 
     res.status(200).json({ message: "Chat cleared" });
-
   } catch (error) {
     console.log("Clear chat error:", error);
     res.status(500).json({ error: "Server error" });
@@ -110,8 +109,7 @@ export const getMessages = async (req, res) => {
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
-      deletedFor: { $ne: myId } //for clear chat
-      
+      deletedFor: { $ne: myId }, //for clear chat
     }).sort({ createdAt: 1 });
 
     const senderSocketId = getReceiverSocketId(userToChatId);
@@ -164,26 +162,26 @@ export const sendMessage = async (req, res) => {
 
     const populated = await Message.findById(newMessage._id);
     // 🤖 BOT REPLY (STEP 2)
-const receiver = await User.findById(receiverId);
+    const receiver = await User.findById(receiverId);
 
-if (receiver?.isBot) {
-  setTimeout(async () => {
-    const botReply = await generateBotReply(text, senderId, receiverId);
+    if (receiver?.isBot) {
+      setTimeout(async () => {
+        const botReply = await generateBotReply(text, senderId, receiverId);
 
-    const botMessage = await Message.create({
-      senderId: receiverId, // bot is sender
-      receiverId: senderId,
-      text: botReply,
-      isRead: false,
-    });
+        const botMessage = await Message.create({
+          senderId: receiverId, // bot is sender
+          receiverId: senderId,
+          text: botReply,
+          isRead: false,
+        });
 
-    const senderSocketId = getReceiverSocketId(senderId);
+        const senderSocketId = getReceiverSocketId(senderId);
 
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("newMessage", botMessage);
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("newMessage", botMessage);
+        }
+      }, 800);
     }
-  }, 800);
-}
     const receiverSocketId = getReceiverSocketId(receiverId);
     const senderSocketId = getReceiverSocketId(senderId);
 
@@ -360,6 +358,18 @@ export const togglePinMessage = async (req, res) => {
 
     await message.save();
 
+    const senderSocketId = getReceiverSocketId(message.senderId.toString());
+
+    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
+
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("messagePinned", message);
+    }
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messagePinned", message);
+    }
+
     res.status(200).json(message);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -397,23 +407,19 @@ export const toggleStarMessage = async (req, res) => {
   }
 };
 
-
 export const getStarredMessages = async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user._id);
     console.log("STARRED API HIT");
-console.log("USER:", req.user._id);
+    console.log("USER:", req.user._id);
 
     const messages = await Message.find({
       starred: true,
-      $or: [
-        { senderId: userId },
-        { receiverId: userId }
-      ]
+      $or: [{ senderId: userId }, { receiverId: userId }],
     })
-    .populate("senderId", "username fullName profilePic")
-    .populate("receiverId", "username fullName profilePic")
-    .sort({ createdAt: -1 });
+      .populate("senderId", "username fullName profilePic")
+      .populate("receiverId", "username fullName profilePic")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(messages);
   } catch (err) {
