@@ -2,30 +2,61 @@ import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { LogOut, MessageSquare, Settings, Palette, User, Star, BarChart3 } from "lucide-react";
 import Avatar from "./Avatar";
-
+import { Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { useRequestStore } from "../store/useRequestStore";
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
+   const {
+      requests,
+      acceptRequest,
+      rejectRequest,
+      getPendingRequests,
+      addRequestRealtime,
+      sentRequests,
+      getSentRequests,
+    } = useRequestStore();
+
+const { socket } = useAuthStore();
+
+useEffect(() => {
+  getSentRequests();
+  getPendingRequests();
+
+  socket?.on("newRequest", (newRequest) => {
+
+    addRequestRealtime(newRequest);
+
+  });
+
+  return () => {
+    socket?.off("newRequest");
+  };
+
+}, [socket]);
+    useEffect(() => {
+  getPendingRequests();
+}, []);
+
+
   const testSound = () => {
-  const audio = new Audio("/sound/notification.mp3");
+    const audio = new Audio("/sound/notification.mp3");
+    audio.volume = 1;
+    audio.currentTime = 0;
 
-  audio.volume = 1;
-  audio.currentTime = 0;
-
-  audio.play()
-    .then(() => {
-      console.log("🔊 SOUND WORKING");
-    })
-    .catch((err) => {
-      console.log("❌ SOUND FAILED:", err);
-    });
-};
- useEffect(() => {
+    audio.play()
+      .then(() => {
+        console.log("🔊 SOUND WORKING");
+      })
+      .catch((err) => {
+        console.log("❌ SOUND FAILED:", err);
+      });
+  };
+  useEffect(() => {
     const close = () => setMenuOpen(false);
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
@@ -114,19 +145,19 @@ const Navbar = () => {
                     >
                       <Star className="w-4 h-4" />
                       Starred
-                    </button> 
+                    </button>
 
                     {/* ANALYTICS 👇 ADD THIS */}
-<button
-  onClick={() => {
-    navigate(`/analytics/${authUser._id}`);
-    setMenuOpen(false);
-  }}
-  className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2"
->
-  <BarChart3 className="w-4 h-4" />
-  Analytics
-</button>
+                    <button
+                      onClick={() => {
+                        navigate(`/analytics/${authUser._id}`);
+                        setMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2"
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      Analytics
+                    </button>
 
 
 
@@ -156,9 +187,28 @@ const Navbar = () => {
 
                   </div>
                 )}
+                <button
+  onClick={() => navigate("/requests")}
+  className="btn btn-ghost btn-circle"
+>
+
+  <div className="indicator">
+
+    <Bell className="size-5" />
+
+    {requests.length > 0 && (
+      <span className="badge badge-sm badge-primary indicator-item">
+        {requests.length}
+      </span>
+    )}
+
+  </div>
+
+</button>
               </div>
 
             </div>
+            
           )}
 
         </div>

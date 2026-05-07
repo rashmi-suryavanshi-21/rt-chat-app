@@ -2,14 +2,63 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { User, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
+import toast from "react-hot-toast";
+import { useAuthStore } from "../store/useAuthStore";
 const UserProfilePage = () => {
   const { username } = useParams();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showImage, setShowImage] = useState(false);
   const navigate = useNavigate();
+const [requestStatus, setRequestStatus] = useState(null);
+const [sendingRequest, setSendingRequest] = useState(false);
+const { socket } = useAuthStore();
+useEffect(() => {
 
+  socket?.on("requestAccepted", ({ userId }) => {
+
+    if (userId === user?._id) {
+      setRequestStatus("accepted");
+    }
+
+  });
+
+  return () => {
+    socket?.off("requestAccepted");
+  };
+
+}, [socket, user]);
+const handleSendRequest = async () => {
+  try {
+
+    if (!user?._id) return;
+
+    setSendingRequest(true);
+
+    const res = await fetch(
+      `http://localhost:5001/api/request/send/${user._id}`,
+      {
+        method: "POST",
+        credentials: "include",
+      }
+    );
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setRequestStatus("pending");
+      toast.success("Request sent");
+    } else {
+      toast.error(data.message || "Failed to send request");
+    }
+
+  } catch (error) {
+    console.log(error);
+    toast.error("Something went wrong");
+  } finally {
+    setSendingRequest(false);
+  }
+};
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -25,11 +74,24 @@ const UserProfilePage = () => {
         const data = await res.json();
 
         if (res.ok) {
-          setUser(data);
-        } else {
-          console.log("API Error:", data.message);
-          setUser(null);
-        }
+
+  setUser(data);
+
+  const statusRes = await fetch(
+    `http://localhost:5001/api/request/status/${data._id}`,
+    {
+      credentials: "include",
+    }
+  );
+
+  const statusData = await statusRes.json();
+
+  setRequestStatus(statusData.status);
+
+} else {
+  console.log("API Error:", data.message);
+  setUser(null);
+}
       } catch (err) {
         console.log("Fetch error:", err);
         setUser(null);
@@ -110,12 +172,35 @@ const UserProfilePage = () => {
             </p>
           )}
 
-          <button
-            onClick={() => navigate(-1)}
-            className="btn btn-primary mt-4 w-full"
-          >
-            Start Chat
-          </button>
+{requestStatus === "accepted" ? (
+
+  <button
+    onClick={() => navigate("/")}
+    className="btn btn-primary mt-4 w-full"
+  >
+    Start Chat
+  </button>
+
+) : requestStatus === "pending" ? (
+
+  <button
+    disabled
+    className="btn mt-4 w-full"
+  >
+    Requested
+  </button>
+
+) : (
+
+  <button
+    onClick={handleSendRequest}
+    disabled={sendingRequest}
+    className="btn btn-primary mt-4 w-full"
+  >
+    {sendingRequest ? "Sending..." : "Send Request"}
+  </button>
+
+)}
         </div>
       </div>
     </div>

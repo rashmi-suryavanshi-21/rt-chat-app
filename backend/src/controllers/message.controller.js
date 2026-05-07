@@ -1,5 +1,7 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
+import Block from "../models/block.model.js";
+import ChatRequest from "../models/chatRequest.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import mongoose from "mongoose";
@@ -141,7 +143,58 @@ export const sendMessage = async (req, res) => {
     const { text, image } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
+   // FIND RECEIVER
+    const receiverUser = await User.findById(receiverId);
 
+    // =========================
+    // CHECK ACCEPTED REQUEST
+    // =========================
+
+    if (!receiverUser?.isBot) {
+      const request = await ChatRequest.findOne({
+        $or: [
+          {
+            senderId,
+            receiverId,
+            status: "accepted",
+          },
+          {
+            senderId: receiverId,
+            receiverId: senderId,
+            status: "accepted",
+          },
+        ],
+      });
+
+      if (!request) {
+        return res.status(403).json({
+          message: "Chat request not accepted",
+        });
+      }
+    }
+
+    // =========================
+    // CHECK BLOCKED
+    // =========================
+
+    const blocked = await Block.findOne({
+      $or: [
+        {
+          blocker: senderId,
+          blocked: receiverId,
+        },
+        {
+          blocker: receiverId,
+          blocked: senderId,
+        },
+      ],
+    });
+
+    if (blocked) {
+      return res.status(403).json({
+        message: "User blocked",
+      });
+    }
     let imageUrl;
 
     if (image) {

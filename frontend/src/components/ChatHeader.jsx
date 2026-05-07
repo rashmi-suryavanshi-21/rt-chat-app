@@ -5,7 +5,7 @@ import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
-
+import { toast } from "react-hot-toast";
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser, setMessages } = useChatStore(); // ✅ FIX
   const { onlineUsers } = useAuthStore();
@@ -90,6 +90,7 @@ const { users } = useChatStore.getState();
               </p>
             )}
           </div>
+          
         </div>
 
         <div className="relative ">

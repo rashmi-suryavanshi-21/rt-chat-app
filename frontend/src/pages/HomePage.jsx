@@ -1,9 +1,9 @@
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-
 import Sidebar from "../components/Sidebar";
 import NoChatSelected from "../components/NoChatSelected";
 import ChatContainer from "../components/ChatContainer";
+import RequestList from "../components/RequestList";
 
 const HomePage = () => {
   const { selectedUser } = useChatStore();
@@ -31,7 +31,6 @@ const HomePage = () => {
 
           {/* Chat Section */}
           <div className="flex h-[calc(100%-4rem)]">
-
             {/* Sidebar */}
             <Sidebar />
 
