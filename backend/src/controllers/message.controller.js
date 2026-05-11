@@ -14,9 +14,44 @@ export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
 
-    const users = await User.find({
-      _id: { $ne: loggedInUserId },
-    }).select("-password");
+    // ACCEPTED REQUESTS
+const acceptedRequests = await ChatRequest.find({
+  $or: [
+    { senderId: loggedInUserId },
+    { receiverId: loggedInUserId },
+  ],
+  status: "accepted",
+});
+
+// EXTRACT ACCEPTED USER IDS
+const acceptedUserIds = acceptedRequests.map((req) => {
+
+  if (req.senderId.toString() === loggedInUserId.toString()) {
+    return req.receiverId;
+  }
+
+  return req.senderId;
+
+});
+
+// GET AI BOTS
+const botUsers = await User.find({
+  isBot: true,
+}).select("-password");
+
+// NORMAL USERS
+const acceptedUsers = await User.find({
+  _id: {
+    $in: acceptedUserIds,
+    $ne: loggedInUserId,
+  },
+}).select("-password");
+
+// MERGE USERS + BOTS
+const users = [
+  ...botUsers,
+  ...acceptedUsers,
+];
 
     const usersWithLastMsg = await Promise.all(
       users.map(async (user) => {

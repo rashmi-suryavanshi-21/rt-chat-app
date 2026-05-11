@@ -7,6 +7,8 @@ import {
   getPendingRequests,
   getRequestStatus,
   getSentRequests,
+  removeConnection,
+  hideRequest,
 } from "../controllers/request.controller.js";
 
 import { protectRoute } from "../middleware/auth.middleware.js";
@@ -24,5 +26,9 @@ router.get("/pending", protectRoute, getPendingRequests);
 router.get("/status/:id", protectRoute, getRequestStatus);
 
 router.get("/sent", protectRoute, getSentRequests);
+
+router.put("/hide/:id", protectRoute, hideRequest);
+
+router.delete("/remove/:id", protectRoute, removeConnection);
 
 export default router;

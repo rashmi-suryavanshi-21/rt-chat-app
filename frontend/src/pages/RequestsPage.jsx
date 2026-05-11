@@ -13,6 +13,7 @@ const RequestsPage = () => {
     getSentRequests,
     acceptRequest,
     rejectRequest,
+    hideRequest,
   } = useRequestStore();
 
   useEffect(() => {
@@ -148,11 +149,17 @@ const RequestsPage = () => {
                   {req.status === "accepted" ? (
 
                     <button
-                      onClick={() => navigate("/")}
-                      className="btn btn-primary btn-sm"
-                    >
-                      Start Chat
-                    </button>
+  onClick={async () => {
+
+    await hideRequest(req._id);
+
+    navigate("/");
+
+  }}
+  className="btn btn-primary btn-sm"
+>
+  Start Chat
+</button>
 
                   ) : (
 

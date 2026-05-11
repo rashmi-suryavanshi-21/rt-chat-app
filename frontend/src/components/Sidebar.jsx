@@ -6,15 +6,17 @@ import SearchUser from "./SearchUser";
 import Avatar from "./Avatar";
 
 const Sidebar = () => {
-  const {
-    users,
-    getUsers,
-    setSelectedUser,
-    selectedUser: currentChatUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
-    typingUsers
-  } = useChatStore();
+ const {
+  users,
+  searchedUsers,
+  searchUsers,
+  getUsers,
+  setSelectedUser,
+  selectedUser: currentChatUser,
+  subscribeToMessages,
+  unsubscribeFromMessages,
+  typingUsers
+} = useChatStore();
 
   const { onlineUsers } = useAuthStore();
 
@@ -53,27 +55,13 @@ const Sidebar = () => {
   // =========================
   // FILTER + SORT
   // =========================
-  const displayUsers = (users || [])
-    .filter((user) =>
-      user.username?.toLowerCase().includes(q) ||
-      user.fullName?.toLowerCase().includes(q)
-    )
-    .sort((a, b) => {
-      if (!q) {
-        return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
-      }
-
-      const aName = (a.username + " " + (a.fullName || "")).toLowerCase();
-      const bName = (b.username + " " + (b.fullName || "")).toLowerCase();
-
-      const aStarts = aName.startsWith(q);
-      const bStarts = bName.startsWith(q);
-
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-
-      return aName.localeCompare(bName);
-    });
+const displayUsers = query.trim()
+  ? searchedUsers
+  : (users || []).sort(
+      (a, b) =>
+        new Date(b.updatedAt || 0) -
+        new Date(a.updatedAt || 0)
+    );
 
     
   return (
@@ -86,7 +74,12 @@ const Sidebar = () => {
       </div>
 
       {/* SEARCH */}
-      <SearchUser onSearch={setQuery} />
+      <SearchUser
+  onSearch={(value) => {
+    setQuery(value);
+    searchUsers(value);
+  }}
+/>
 
       {/* LIST */}
       <div className="p-2 space-y-2">

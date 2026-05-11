@@ -178,6 +178,10 @@ export const getSentRequests = async (req, res) => {
 
     const requests = await ChatRequest.find({
       senderId: req.user._id,
+
+      hiddenFor: {
+    $ne: req.user._id,
+  },
     }).populate(
       "receiverId",
       "fullName username profilePic"
@@ -189,5 +193,82 @@ export const getSentRequests = async (req, res) => {
     res.status(500).json({
       message: "Internal server error",
     });
+  }
+};
+export const hideRequest = async (req, res) => {
+  try {
+
+    const requestId = req.params.id;
+
+    const request = await ChatRequest.findById(requestId);
+
+    if (!request) {
+      return res.status(404).json({
+        message: "Request not found",
+      });
+    }
+
+    // already hidden
+    if (
+      request.hiddenFor.includes(req.user._id)
+    ) {
+      return res.status(200).json({
+        message: "Already hidden",
+      });
+    }
+
+    request.hiddenFor.push(req.user._id);
+
+    await request.save();
+
+    res.status(200).json({
+      message: "Request hidden",
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
+
+  }
+};
+export const removeConnection = async (req, res) => {
+  try {
+
+    const currentUserId = req.user._id;
+    const otherUserId = req.params.id;
+
+    const deleted = await ChatRequest.findOneAndDelete({
+      $or: [
+        {
+          senderId: currentUserId,
+          receiverId: otherUserId,
+          status: "accepted",
+        },
+        {
+          senderId: otherUserId,
+          receiverId: currentUserId,
+          status: "accepted",
+        },
+      ],
+    });
+
+    if (!deleted) {
+      return res.status(404).json({
+        message: "Connection not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Connection removed",
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
+
   }
 };

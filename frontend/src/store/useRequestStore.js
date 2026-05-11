@@ -99,4 +99,42 @@ sentRequests: [],
     console.log(error);
   }
 },
+hideRequest: async (id) => {
+  try {
+
+    await axios.put(
+      `/api/request/hide/${id}`
+    );
+
+    set((state) => ({
+      sentRequests: state.sentRequests.filter(
+        (req) => req._id !== id
+      ),
+    }));
+
+  } catch (error) {
+
+    console.log(error);
+
+  }
+},
+removeConnection: async (userId) => {
+  try {
+
+    await axios.delete(
+      `/api/request/remove/${userId}`
+    );
+
+    toast.success("Connection removed");
+
+  } catch (error) {
+
+    toast.error(
+      error.response?.data?.message ||
+      "Failed to remove connection"
+    );
+
+  }
+},
+
 }));

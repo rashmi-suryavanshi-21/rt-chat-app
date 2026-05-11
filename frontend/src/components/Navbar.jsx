@@ -122,6 +122,25 @@ useEffect(() => {
                 </span>
               </Link>
 
+              <button
+  onClick={() => navigate("/requests")}
+  className="btn btn-ghost btn-circle"
+>
+
+  <div className="indicator">
+
+    <Bell className="size-5" />
+
+    {requests.length > 0 && (
+      <span className="badge badge-sm badge-primary indicator-item">
+        {requests.length}
+      </span>
+    )}
+
+  </div>
+
+</button>
+
               {/* 3 DOT MENU */}
               <div className="relative" onClick={(e) => e.stopPropagation()}>
 
@@ -187,24 +206,7 @@ useEffect(() => {
 
                   </div>
                 )}
-                <button
-  onClick={() => navigate("/requests")}
-  className="btn btn-ghost btn-circle"
->
-
-  <div className="indicator">
-
-    <Bell className="size-5" />
-
-    {requests.length > 0 && (
-      <span className="badge badge-sm badge-primary indicator-item">
-        {requests.length}
-      </span>
-    )}
-
-  </div>
-
-</button>
+                
               </div>
 
             </div>

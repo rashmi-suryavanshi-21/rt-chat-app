@@ -40,7 +40,30 @@ export const useChatStore = create((set, get) => ({
 
     return newUsers;
   },
+  
+  blockUser: async (userId) => {
+  try {
 
+    await axiosInstance.post(
+      `/block/${userId}`
+    );
+
+    toast.success("User blocked");
+
+    // close current chat
+    set({
+      selectedUser: null,
+    });
+
+  } catch (error) {
+
+    toast.error(
+      error.response?.data?.message ||
+      "Failed to block user"
+    );
+
+  }
+},
   // =========================
   //NOTIFICATIONs
   // =========================
@@ -75,15 +98,31 @@ export const useChatStore = create((set, get) => ({
   // =========================
   // SEARCH USERS
   // =========================
-  searchUsers: async (query) => {
-    const { users } = get();
+searchUsers: async (query) => {
+  try {
 
-    const filtered = users.filter((user) =>
-      user.fullName?.toLowerCase().includes(query.toLowerCase()),
+    console.log("SEARCHING:", query);
+
+    if (!query.trim()) {
+      set({ searchedUsers: [] });
+      return;
+    }
+
+    const res = await axiosInstance.get(
+      `/users/search?query=${query}`
     );
 
-    set({ searchedUsers: filtered });
-  },
+    set({
+      searchedUsers: res.data,
+    });
+
+  } catch (error) {
+    console.log(
+      "Search failed:",
+      error
+    );
+  }
+},
 
   clearSearch: () => set({ searchedUsers: [] }),
 

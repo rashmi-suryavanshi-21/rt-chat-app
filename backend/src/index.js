@@ -15,6 +15,7 @@ import userRoutes from "./routes/user.route.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import { startCronJobs } from "./lib/cronJobs.js";
 import requestRoutes from "./routes/request.route.js";
+import blockRoutes from "./routes/block.routes.js";
 startCronJobs();
 
 // Load environment variables from .env file
@@ -41,6 +42,7 @@ app.use("/health", healthRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/request", requestRoutes);
+app.use("/api/block", blockRoutes);
 // app.use(express.json({ limit: "10mb" }));
 // console.log(process.env.CLOUDINARY_CLOUD_NAME)
 
