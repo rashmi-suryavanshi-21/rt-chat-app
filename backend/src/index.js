@@ -18,18 +18,18 @@ import requestRoutes from "./routes/request.route.js";
 import blockRoutes from "./routes/block.routes.js";
 startCronJobs();
 
-// Load environment variables from .env file
 dotenv.config();
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5001;
 const __dirname = path.resolve();
 
 app.use(cookieParser());
 app.use(
   cors({
-    origin: process.env.NODE_ENV === "production" 
-      ? ["http://localhost:8080", "http://localhost"] 
-      : "http://localhost:5174",
+    origin: [
+      "http://localhost:5173",
+      process.env.CLIENT_URL,
+    ],
     credentials: true,
   })
 );
@@ -43,23 +43,14 @@ app.use("/api/users", userRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/request", requestRoutes);
 app.use("/api/block", blockRoutes);
-// app.use(express.json({ limit: "10mb" }));
-// console.log(process.env.CLOUDINARY_CLOUD_NAME)
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+  app.use((req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
   });
 }
-// console.log("MONGO:", process.env.MONGODB_URI);
-// console.log("ENV FILE DEBUG:");
-// console.log("PORT:", process.env.PORT);
-// console.log("MONGO:", process.env.MONGODB_URI);
-// console.log("JWT:", process.env.JWT_SECRET);
-// console.log("ENV KEYS:", Object.keys(process.env));
-
 
 
 server.listen(PORT, () => {
