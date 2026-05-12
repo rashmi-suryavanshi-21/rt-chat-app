@@ -22,7 +22,7 @@
     "groq-sdk": "^1.1.2",
     "http": "^0.0.1-security",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.6.1",
+    "mongoose": "^8.23.1",
     "node-cron": "^4.2.1",
     "path": "^0.12.7",
     "socket.io": "^4.8.3"

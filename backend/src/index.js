@@ -29,7 +29,7 @@ app.use(
   cors({
     origin: process.env.NODE_ENV === "production" 
       ? ["http://localhost:8080", "http://localhost"] 
-      : "http://localhost:5173",
+      : "http://localhost:5174",
     credentials: true,
   })
 );
