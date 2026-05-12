@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Star } from "lucide-react";
+import { Star, X } from "lucide-react";
 import { formatMessageTime } from "../lib/utils";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNavigate } from "react-router-dom";
+import { formatSmartDateTime } from "../lib/utils";
 
 const StarredPage = () => {
-  const { getStarredMessages, starMessage, setSelectedUser, setHighlightId } = useChatStore();
+  const { getStarredMessages, starMessage, setSelectedUser, setHighlightId } =
+    useChatStore();
   const [starred, setStarred] = useState([]);
   const { authUser } = useAuthStore();
   const navigate = useNavigate();
@@ -45,26 +47,33 @@ const StarredPage = () => {
   };
 
   const handleOpenMessage = (msg) => {
-  const otherUser =
-    msg.senderId._id === authUser._id
-      ? msg.receiverId
-      : msg.senderId;
+    const otherUser =
+      msg.senderId._id === authUser._id ? msg.receiverId : msg.senderId;
 
-  setSelectedUser(otherUser);
-  setHighlightId(null);
-  navigate("/");
-setTimeout(() => {
-  setHighlightId(msg._id);
-}, 300);
-   // chat page
-};
+    setSelectedUser(otherUser);
+    setHighlightId(null);
+    navigate("/");
+    setTimeout(() => {
+      setHighlightId(msg._id);
+    }, 300);
+    // chat page
+  };
 
   return (
-    <div className="h-full w-full p-6 overflow-y-auto bg-base-100">
+    <div className="min-h-screen w-full pt-24 p-6 overflow-y-auto bg-base-100">
       {/* HEADER */}
-      <div className="flex items-center gap-3 mb-6">
-        <Star className="text-yellow-400" />
-        <h1 className="text-2xl font-semibold">Starred Messages</h1>
+      <div className="relative mb-6 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          {/* <Star className="text-yellow-400" /> */}
+          <h1 className="text-lg font-semibold">Starred Messages</h1>
+        </div>
+
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute right-0 p-2 rounded-full hover:bg-base-200 transition z-50"
+        >
+          <X size={20} className="text-base-content" />
+        </button>
       </div>
 
       {/* EMPTY STATE */}
@@ -75,9 +84,7 @@ setTimeout(() => {
       )}
 
       {/* LIST */}
-      <div className="space-y-4 max-w-3xl mx-auto  "
-      
-      >
+      <div className="space-y-4 max-w-3xl mx-auto  ">
         {starred.map((msg) => (
           <div
             onClick={() => handleOpenMessage(msg)}
@@ -105,10 +112,9 @@ setTimeout(() => {
               <p className="text-sm text-base-content break-words">
                 {msg.text || "Media message"}
               </p>
-
-              {/* TIME */}
-              <span className="text-xs text-gray-500 mt-1">
-                {formatMessageTime(msg.createdAt)}
+              {/* FULL DATE TIME */}
+              <span className="text-xs text-gray-500">
+                {formatSmartDateTime(msg.createdAt)}
               </span>
             </div>
 

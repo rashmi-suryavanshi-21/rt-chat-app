@@ -1,12 +1,13 @@
-import { X } from "lucide-react";
+import { X, MoreVertical, Trash2, UserMinus, Ban } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useRequestStore } from "../store/useRequestStore";
+import MenuDropdown from "./MenuDropdown";
 
 const ChatHeader = () => {
   const {
@@ -103,38 +104,47 @@ const ChatHeader = () => {
 
         </div>
 
-        <div className="relative ">
+        {!selectedUser.isBot && (
+          <div className="relative ">
           {/* 3 dots menu */}
           <button onClick={() => setOpen(!open)}
-            className="btn btn-ghost btn-sm">⋮</button>
+            className="btn btn-ghost btn-sm hover:bg-base-300 rounded-full"><MoreVertical size={18} /></button>
 
           {open && (
-            <div className="absolute right-0 mt-2 w-44 bg-base-200 rounded-lg shadow-lg z-50 overflow-hidden">
+            // <div className="absolute right-0 mt-2 w-44 bg-base-200 rounded-lg shadow-lg z-50 overflow-hidden">
 
-              <button
-                onClick={handleClearChat}
-                className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2 text-red-400"
-              >
-                🗑️ Clear Chat
-              </button>
-              <button
-                onClick={() => removeConnection(selectedUser._id)}
-                className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2 text-red-400"
-              >
-                Remove Connection
-              </button>
-              <button
-                onClick={() =>
-                  blockUser(selectedUser._id)
-                }
-                className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2 text-red-400"
-              >
-                Block User
-              </button>
+            //   <button
+            //     onClick={handleClearChat}
+            //     className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2 text-red-400"
+            //   >
+            //     🗑️ Clear Chat
+            //   </button>
+            //   <button
+            //     onClick={() => removeConnection(selectedUser._id)}
+            //     className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2 text-red-400"
+            //   >
+            //     Remove Connection
+            //   </button>
+            //   <button
+            //     onClick={() =>
+            //       blockUser(selectedUser._id)
+            //     }
+            //     className="w-full text-left px-4 py-2 hover:bg-base-300 flex items-center gap-2 text-red-400"
+            //   >
+            //     Block User
+            //   </button>
 
-            </div>
+            // </div>
+             <MenuDropdown
+        setOpen={setOpen}
+        handleClearChat={handleClearChat}
+        removeConnection={removeConnection}
+        blockUser={blockUser}
+        selectedUser={selectedUser}
+      />
           )}
         </div>
+        )}
       </div>
     </div>
   );

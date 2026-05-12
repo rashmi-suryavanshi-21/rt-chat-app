@@ -9,6 +9,7 @@ import {
   getSentRequests,
   removeConnection,
   hideRequest,
+  checkConnection,
 } from "../controllers/request.controller.js";
 
 import { protectRoute } from "../middleware/auth.middleware.js";
@@ -30,5 +31,11 @@ router.get("/sent", protectRoute, getSentRequests);
 router.put("/hide/:id", protectRoute, hideRequest);
 
 router.delete("/remove/:id", protectRoute, removeConnection);
+
+router.get(
+  "/check/:id",
+  protectRoute,
+  checkConnection
+);
 
 export default router;

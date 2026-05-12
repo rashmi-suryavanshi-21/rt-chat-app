@@ -92,6 +92,11 @@ if (senderSocketId) {
 
     res.status(200).json({
       message: "Request accepted",
+
+  userId:
+    request.senderId.toString() === req.user._id.toString()
+      ? request.receiverId.toString()
+      : request.senderId.toString(),
     });
 
   } catch (error) {
@@ -262,6 +267,40 @@ export const removeConnection = async (req, res) => {
 
     res.status(200).json({
       message: "Connection removed",
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
+
+  }
+};
+
+export const checkConnection = async (req, res) => {
+  try {
+
+    const currentUserId = req.user._id;
+    const otherUserId = req.params.id;
+
+    const connection = await ChatRequest.findOne({
+      $or: [
+        {
+          senderId: currentUserId,
+          receiverId: otherUserId,
+          status: "accepted",
+        },
+        {
+          senderId: otherUserId,
+          receiverId: currentUserId,
+          status: "accepted",
+        },
+      ],
+    });
+
+    res.status(200).json({
+      isConnected: !!connection,
     });
 
   } catch (error) {

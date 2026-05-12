@@ -40,6 +40,7 @@ const ChatContainer = () => {
     clearHighlightId,
     pinMessage,
     starMessage,
+    unblockUser,
   } = useChatStore();
 
   const { authUser, socket } = useAuthStore();
@@ -56,22 +57,6 @@ const ChatContainer = () => {
 
   const scrollRef = useRef(null);
   const shouldAutoScroll = useRef(true);
-
-// useEffect(() => {
-//   const container = chatContainerRef.current;
-//   if (!container || !selectedUser?._id) return;
-
-//   const saved = scrollPositions.current[selectedUser._id];
-
-//   requestAnimationFrame(() => {
-//     if (saved !== undefined) {
-//       container.scrollTop = saved;
-//     } else {
-//       container.scrollTop = container.scrollHeight;
-//     }
-//   });
-
-// }, [selectedUser?._id, messages.length]);
 
   useEffect(() => {
     const container = chatContainerRef.current;
@@ -380,7 +365,7 @@ useEffect(() => {
           <div
             className={`sticky ${
               currentPinned ? "top-16" : "top-2"
-            } z-50 flex justify-center pointer-events-none`}
+            } z- flex justify-center pointer-events-none`}
           >
             <div className="bg-base-300 text-xs px-4 py-1 rounded-full shadow">
               {stickyDate}
@@ -730,7 +715,33 @@ useEffect(() => {
   </button>
 )} */}
 
-      <MessageInput editingMsg={editingMsg} setEditingMsg={setEditingMsg} />
+      {selectedUser?.isBlocked ? (
+  <div className="border-t border-base-300 bg-base-200 p-4 text-center">
+    <p className="text-red-400 text-sm font-medium">
+      You blocked this user
+    </p>
+
+    <button
+      onClick={() => unblockUser(selectedUser._id)}
+      className="mt-2 text-xs text-blue-400 hover:underline"
+    >
+      Unblock
+    </button>
+  </div>
+): selectedUser?.blockedByUser ? (
+
+  <div className="border-t border-base-300 bg-base-200 p-4 text-center">
+    <p className="text-red-400 text-sm font-medium">
+      You cannot reply to this conversation
+    </p>
+  </div>
+
+) : (
+  <MessageInput
+    editingMsg={editingMsg}
+    setEditingMsg={setEditingMsg}
+  />
+)}
     </div>
   );
 };

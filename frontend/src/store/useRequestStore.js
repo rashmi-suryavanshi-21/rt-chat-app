@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { useChatStore } from "./useChatStore";
 
 export const useRequestStore = create((set) => ({
 
@@ -38,11 +39,32 @@ sentRequests: [],
 );
       toast.success("Request accepted");
 
+      const res = await axios.get("/api/request/status/" + id);
+
       set((state) => ({
         requests: state.requests.filter(
           (req) => req._id !== id
         ),
+         sentRequests: state.sentRequests.map((req) =>
+        req._id === id
+          ? { ...req, status: "accepted" }
+          : req
+      ),
       }));
+
+      const connectedUserId = res.data.userId;
+      const { selectedUser } = useChatStore.getState();
+      
+
+      if (selectedUser?._id === connectedUserId) {
+      useChatStore.setState({
+        selectedUser: {
+          ...selectedUser,
+          isConnected: true,
+        },
+      });
+      }
+
 
     } catch (error) {
       toast.error("Failed to accept");
@@ -126,6 +148,30 @@ removeConnection: async (userId) => {
     );
 
     toast.success("Connection removed");
+
+    const {selectedUser} = useChatStore.getState();
+
+
+    set((state) => ({
+      sentRequests: state.sentRequests.filter(
+        (req) => req._id !== userId
+      ),
+
+      // optional but IMPORTANT for chat UI
+      requests: state.requests.filter(
+        (req) => req._id !== userId
+      ),
+    }));
+
+    if (selectedUser?._id === userId) {
+      useChatStore.setState({
+        selectedUser: {
+          ...selectedUser,
+          isConnected: false,
+        },
+      });
+    }
+
 
   } catch (error) {
 

@@ -1,54 +1,63 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { LogOut, MessageSquare, Settings, Palette, User, Star, BarChart3 } from "lucide-react";
+import {
+  LogOut,
+  MessageSquare,
+  Settings,
+  Palette,
+  User,
+  Star,
+  BarChart3,
+} from "lucide-react";
 import Avatar from "./Avatar";
 import { Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRequestStore } from "../store/useRequestStore";
+import { useChatStore } from "../store/useChatStore";
+
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-   const {
-      requests,
-      acceptRequest,
-      rejectRequest,
-      getPendingRequests,
-      addRequestRealtime,
-      sentRequests,
-      getSentRequests,
-    } = useRequestStore();
+  const {
+    requests,
+    acceptRequest,
+    rejectRequest,
+    getPendingRequests,
+    addRequestRealtime,
+    sentRequests,
+    getSentRequests,
+  } = useRequestStore();
 
-const { socket } = useAuthStore();
+  const { socket } = useAuthStore();
 
-useEffect(() => {
-  getSentRequests();
-  getPendingRequests();
+  const { users, setSelectedUser } = useChatStore();
 
-  socket?.on("newRequest", (newRequest) => {
+  useEffect(() => {
+    getSentRequests();
+    getPendingRequests();
 
-    addRequestRealtime(newRequest);
+    socket?.on("newRequest", (newRequest) => {
+      addRequestRealtime(newRequest);
+    });
 
-  });
-
-  return () => {
-    socket?.off("newRequest");
-  };
-
-}, [socket]);
-    useEffect(() => {
-  getPendingRequests();
-}, []);
-
+    return () => {
+      socket?.off("newRequest");
+    };
+  }, [socket]);
+  useEffect(() => {
+    getPendingRequests();
+  }, []);
 
   const testSound = () => {
     const audio = new Audio("/sound/notification.mp3");
     audio.volume = 1;
     audio.currentTime = 0;
 
-    audio.play()
+    audio
+      .play()
       .then(() => {
         console.log("🔊 SOUND WORKING");
       })
@@ -123,27 +132,22 @@ useEffect(() => {
               </Link>
 
               <button
-  onClick={() => navigate("/requests")}
-  className="btn btn-ghost btn-circle"
->
+                onClick={() => navigate("/requests")}
+                className="btn btn-ghost btn-circle"
+              >
+                <div className="indicator">
+                  <Bell className="size-5" />
 
-  <div className="indicator">
-
-    <Bell className="size-5" />
-
-    {requests.length > 0 && (
-      <span className="badge badge-sm badge-primary indicator-item">
-        {requests.length}
-      </span>
-    )}
-
-  </div>
-
-</button>
+                  {requests.length > 0 && (
+                    <span className="badge badge-sm badge-primary indicator-item">
+                      {requests.length}
+                    </span>
+                  )}
+                </div>
+              </button>
 
               {/* 3 DOT MENU */}
               <div className="relative" onClick={(e) => e.stopPropagation()}>
-
                 <button
                   onClick={() => setMenuOpen((p) => !p)}
                   className="btn btn-ghost btn-sm"
@@ -153,7 +157,6 @@ useEffect(() => {
 
                 {menuOpen && (
                   <div className="absolute right-0 mt-2 w-44 bg-base-200 rounded-lg shadow-lg z-50 overflow-hidden">
-
                     {/* STARRED */}
                     <button
                       onClick={() => {
@@ -178,8 +181,6 @@ useEffect(() => {
                       Analytics
                     </button>
 
-
-
                     {/* THEMES */}
                     <button
                       onClick={() => {
@@ -203,16 +204,11 @@ useEffect(() => {
                       <LogOut className="w-4 h-4" />
                       Logout
                     </button>
-
                   </div>
                 )}
-                
               </div>
-
             </div>
-            
           )}
-
         </div>
       </div>
     </header>

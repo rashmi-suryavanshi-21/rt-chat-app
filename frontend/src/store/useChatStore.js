@@ -51,9 +51,24 @@ export const useChatStore = create((set, get) => ({
     toast.success("User blocked");
 
     // close current chat
-    set({
-      selectedUser: null,
-    });
+   set((state) => ({
+
+      // 🚫 update selected chat immediately
+      selectedUser: state.selectedUser?._id === userId
+        ? {
+            ...state.selectedUser,
+            isBlocked: true,
+            isConnected: false, // unfollow effect
+          }
+        : state.selectedUser,
+
+      // 🧹 remove from user list (optional but clean UX)
+      users: state.users.map((u) =>
+        u._id === userId
+          ? { ...u, isConnected: false }
+          : u
+      ),
+    }));
 
   } catch (error) {
 
@@ -135,7 +150,16 @@ searchUsers: async (query) => {
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
 
-      set({ messages: res.data });
+      set({
+  messages: res.data.messages,
+
+  selectedUser: {
+    ...get().selectedUser,
+     isConnected: res.data.isConnected,
+    isBlocked: res.data.isBlocked,
+    blockedByUser: res.data.blockedByUser,
+  },
+});
 
       const socket = useAuthStore.getState().socket;
       socket?.emit("markAsRead", { senderId: userId });
@@ -248,6 +272,31 @@ searchUsers: async (query) => {
   }
 
 
+},
+
+unblockUser: async (userId) => {
+  try {
+
+    await axiosInstance.delete(`/block/unblock/${userId}`);
+
+    toast.success("User unblocked");
+
+    set({
+      selectedUser: {
+        ...get().selectedUser,
+        isBlocked: false,
+        blockedByUser: false,
+      },
+    });
+
+  } catch (error) {
+
+    toast.error(
+      error.response?.data?.message ||
+      "Failed to unblock user"
+    );
+
+  }
 },
 
 highlightId: null,
@@ -505,6 +554,45 @@ socket.on("messageStarred", (updatedMsg) => {
   }));
 });
 
+socket.off("userBlocked");
+socket.on("userBlocked", ({ blockerId }) => {
+
+  console.log("BLOCK EVENT RECEIVED", blockerId);
+   const { selectedUser } = get();
+
+  if (!selectedUser) return;
+
+  if (selectedUser._id === blockerId) {
+
+    set((state) => ({
+      selectedUser: {
+        ...state.selectedUser,
+        blockedByUser: true,
+      },
+    }));
+
+  }
+});
+
+socket.off("userUnblocked");
+socket.on("userUnblocked", ({ blockerId }) => {
+
+    const { selectedUser } = get();
+
+  if (!selectedUser) return;
+
+  if (selectedUser._id === blockerId) {
+
+    set((state) => ({
+      selectedUser: {
+        ...state.selectedUser,
+        blockedByUser: false,
+      },
+    }));
+
+  }
+});
+
   },
 
   unsubscribeFromMessages: () => {
@@ -520,6 +608,13 @@ socket.on("messageStarred", (updatedMsg) => {
     socket.off("newMessageNotification");
   },
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+  setSelectedUser: (selectedUser) =>
+  set({
+    selectedUser: {
+      ...selectedUser,
+      isConnected:
+        selectedUser?.isConnected ?? true,
+    },
+  }),
   setMessages: (messages) => set({ messages }), 
 }));

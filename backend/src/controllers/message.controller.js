@@ -15,43 +15,35 @@ export const getUsersForSidebar = async (req, res) => {
     const loggedInUserId = req.user._id;
 
     // ACCEPTED REQUESTS
-const acceptedRequests = await ChatRequest.find({
-  $or: [
-    { senderId: loggedInUserId },
-    { receiverId: loggedInUserId },
-  ],
-  status: "accepted",
-});
+    const acceptedRequests = await ChatRequest.find({
+      $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
+      status: "accepted",
+    });
 
-// EXTRACT ACCEPTED USER IDS
-const acceptedUserIds = acceptedRequests.map((req) => {
+    // EXTRACT ACCEPTED USER IDS
+    const acceptedUserIds = acceptedRequests.map((req) => {
+      if (req.senderId.toString() === loggedInUserId.toString()) {
+        return req.receiverId;
+      }
 
-  if (req.senderId.toString() === loggedInUserId.toString()) {
-    return req.receiverId;
-  }
+      return req.senderId;
+    });
 
-  return req.senderId;
+    // GET AI BOTS
+    const botUsers = await User.find({
+      isBot: true,
+    }).select("-password");
 
-});
+    // NORMAL USERS
+    const acceptedUsers = await User.find({
+      _id: {
+        $in: acceptedUserIds,
+        $ne: loggedInUserId,
+      },
+    }).select("-password");
 
-// GET AI BOTS
-const botUsers = await User.find({
-  isBot: true,
-}).select("-password");
-
-// NORMAL USERS
-const acceptedUsers = await User.find({
-  _id: {
-    $in: acceptedUserIds,
-    $ne: loggedInUserId,
-  },
-}).select("-password");
-
-// MERGE USERS + BOTS
-const users = [
-  ...botUsers,
-  ...acceptedUsers,
-];
+    // MERGE USERS + BOTS
+    const users = [...botUsers, ...acceptedUsers];
 
     const usersWithLastMsg = await Promise.all(
       users.map(async (user) => {
@@ -149,6 +141,18 @@ export const getMessages = async (req, res) => {
       deletedFor: { $ne: myId }, //for clear chat
     }).sort({ createdAt: 1 });
 
+    const me = await User.findById(myId);
+
+    const isBlocked = await Block.findOne({
+      blocker: req.user._id,
+      blocked: userToChatId,
+    });
+
+    const blockedMe = await Block.findOne({
+      blocker: userToChatId,
+      blocked: req.user._id,
+    });
+
     const senderSocketId = getReceiverSocketId(userToChatId);
     const mySocketId = getReceiverSocketId(myId);
 
@@ -166,7 +170,10 @@ export const getMessages = async (req, res) => {
       });
     }
 
-    res.status(200).json(messages);
+    res.status(200).json({ messages,
+       isBlocked: !!isBlocked,
+       blockedByUser: !!blockedMe,
+       });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }
@@ -178,7 +185,7 @@ export const sendMessage = async (req, res) => {
     const { text, image } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
-   // FIND RECEIVER
+    // FIND RECEIVER
     const receiverUser = await User.findById(receiverId);
 
     // =========================

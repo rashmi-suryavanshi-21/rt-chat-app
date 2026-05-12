@@ -4,9 +4,11 @@ import { axiosInstance } from "../lib/axios";
 import {
   BarChart, Bar, PieChart,Pie,Legend,XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell
 } from "recharts";
-import { MessageSquare, Send, Inbox, Clock, User, Activity } from "lucide-react";
+import { MessageSquare, Send, Inbox, Clock, User, Activity, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const UserAnalyticsPage = () => {
+  const navigate = useNavigate();
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,14 @@ fetchAnalytics();
     <div className="min-h-screen bg-base-200 pt-20 text-base-content">
       <div className="max-w-7xl mx-auto w-full">
         {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+
+  <button
+    onClick={() => navigate(-1)}
+    className="absolute right-0 -top-5 p-2 rounded-full hover:bg-base-300 transition z-50"
+  >
+    <X size={22} />
+  </button>
           <div>
            <h1 className="text-3xl font-bold "> User Analytics</h1>
             <p className="opacity-70">Deep dive into communication patterns and activity.</p>
