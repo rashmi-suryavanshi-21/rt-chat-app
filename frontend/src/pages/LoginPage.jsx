@@ -63,7 +63,7 @@ const LoginPage = () => {
             {/* Email */}
             <div className="form-control">
               <label className="label">
-                <span className="label-text font-medium">Email</span>
+                <span className="label-text font-medium">Email & Username</span>
               </label>
 
               <div className="relative">
