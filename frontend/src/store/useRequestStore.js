@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { useChatStore } from "./useChatStore";
 
@@ -11,8 +11,8 @@ sentRequests: [],
   getPendingRequests: async () => {
     try {
 
-      const res = await axios.get(
-  "http://localhost:5001/api/request/pending",
+          const res = await axiosInstance.get(
+      "/request/pending",
   {
     withCredentials: true,
   }
@@ -30,8 +30,8 @@ sentRequests: [],
   acceptRequest: async (id) => {
     try {
 
-      await axios.put(
-  `http://localhost:5001/api/request/accept/${id}`,
+      await axiosInstance.put(
+  `/request/accept/${id}`,
   {},
   {
     withCredentials: true,
@@ -39,7 +39,7 @@ sentRequests: [],
 );
       toast.success("Request accepted");
 
-      const res = await axios.get("/api/request/status/" + id);
+      const res = await axiosInstance.get("/request/status/" + id);
 
       set((state) => ({
         requests: state.requests.filter(
@@ -76,8 +76,8 @@ sentRequests: [],
 
     console.log("Rejecting:", id);
 
-    const res = await axios.delete(
-      `http://localhost:5001/api/request/reject/${id}`,
+    const res = await axiosInstance.delete(
+      `/request/reject/${id}`,
       {
         withCredentials: true,
       }
@@ -106,8 +106,8 @@ sentRequests: [],
   getSentRequests: async () => {
   try {
 
-    const res = await axios.get(
-      "http://localhost:5001/api/request/sent",
+    const res = await axiosInstance.get(
+      "/request/sent",
       {
         withCredentials: true,
       }
@@ -124,8 +124,8 @@ sentRequests: [],
 hideRequest: async (id) => {
   try {
 
-    await axios.put(
-      `/api/request/hide/${id}`
+    await axiosInstance.put(
+      `/request/hide/${id}`
     );
 
     set((state) => ({
@@ -143,8 +143,8 @@ hideRequest: async (id) => {
 removeConnection: async (userId) => {
   try {
 
-    await axios.delete(
-      `/api/request/remove/${userId}`
+    await axiosInstance.delete(
+      `/request/remove/${userId}`
     );
 
     toast.success("Connection removed");

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -61,8 +61,8 @@ const SignUpPage = () => {
 
   const getSuggestions = async (fullName) => {
     try {
-      const res = await axios.post(
-        "http://localhost:5001/api/auth/suggest-usernames",
+      const res = await axiosInstance.post(
+        "/auth/suggest-usernames",
         { fullName }
       );
 

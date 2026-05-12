@@ -5,7 +5,7 @@ import { Image, Send, X, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 
 const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
   const [text, setText] = useState("");
@@ -91,8 +91,8 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
     }
 
     try {
-      const res = await axios.post(
-        "http://localhost:5001/api/messages/schedule",
+      const res = await axiosInstance.post(
+        "/messages/schedule",
         {
           receiverId: selectedUser._id,
           text: text.trim(),

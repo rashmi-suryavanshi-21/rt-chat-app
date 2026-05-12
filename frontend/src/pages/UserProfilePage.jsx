@@ -36,7 +36,7 @@ const handleSendRequest = async () => {
     setSendingRequest(true);
 
     const res = await fetch(
-      `http://localhost:5001/api/request/send/${user._id}`,
+      `${import.meta.env.VITE_API_URL}/request/send/${user._id}`,
       {
         method: "POST",
         credentials: "include",
@@ -65,7 +65,7 @@ const handleSendRequest = async () => {
         setLoading(true);
 
         const res = await fetch(
-          `http://localhost:5001/api/users/${username}`,
+          `${import.meta.env.VITE_API_URL}/users/${username}`,
           {
             credentials: "include", // ✅ REQUIRED
           }
@@ -78,7 +78,7 @@ const handleSendRequest = async () => {
   setUser(data);
 
   const statusRes = await fetch(
-    `http://localhost:5001/api/request/status/${data._id}`,
+    `${import.meta.env.VITE_API_URL}/request/status/${data._id}`,
     {
       credentials: "include",
     }
