@@ -3,7 +3,7 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -94,31 +94,77 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // connectSocket: () => {
+  //   const { authUser, socket } = get();
+
+  //   if (!authUser) return;
+
+  //   // avoid multiple sockets
+  //   if (socket && socket.connected) return;
+
+  //   const newSocket = io(BASE_URL, {
+  //     query: {
+  //       userId: authUser._id,
+  //     },
+  //     transports: ["websocket"],
+  //   });
+
+  //   set({ socket: newSocket });
+
+  //   newSocket.on("connect", () => {
+  //     console.log("✅ socket connected:", newSocket.id);
+  //   });
+
+  //   newSocket.on("getOnlineUsers", (userIds) => {
+  //     set({ onlineUsers: userIds });
+  //   });
+  // },
+
   connectSocket: () => {
     const { authUser, socket } = get();
 
     if (!authUser) return;
 
-    // avoid multiple sockets
-    if (socket && socket.connected) return;
+    if (socket?.connected) return;
 
-    const newSocket = io(BASE_URL, {
+    if (!SOCKET_URL) {
+      console.error("Missing VITE_SOCKET_URL");
+      return;
+    }
+    const newSocket = io(SOCKET_URL, {
       query: {
         userId: authUser._id,
       },
-      transports: ["websocket"],
+      withCredentials: true,
+
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
-    set({ socket: newSocket });
-
     newSocket.on("connect", () => {
-      console.log("✅ socket connected:", newSocket.id);
+      console.log("✅ SOCKET CONNECTED:", newSocket.id);
+    });
+
+    newSocket.on("connect_error", (err) => {
+      console.log("❌ SOCKET ERROR:", err.message);
+    });
+
+    newSocket.on("disconnect", (reason) => {
+      console.log("❌ SOCKET DISCONNECTED:", reason);
     });
 
     newSocket.on("getOnlineUsers", (userIds) => {
+      console.log("ONLINE USERS:", userIds);
       set({ onlineUsers: userIds });
     });
-  },
+
+    set({ socket: newSocket });
+  }, 
+
+
+
+
   disconnectSocket: () => {
     const socket = get().socket;
 
