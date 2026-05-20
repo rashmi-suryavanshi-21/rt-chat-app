@@ -35,20 +35,22 @@ const Navbar = () => {
 
   const { users, setSelectedUser } = useChatStore();
 
-  useEffect(() => {
+   useEffect(() => {
+
+    if (!authUser) return;
+
     getSentRequests();
     getPendingRequests();
 
-    socket?.on("newRequest", (newRequest) => {
-      addRequestRealtime(newRequest);
-    });
+  const handleNewRequest = (newRequest) => {
+    addRequestRealtime(newRequest);
+  };
 
-    return () => {
-      socket?.off("newRequest");
-    };
-  }, [socket]);
-  useEffect(() => {
-    getPendingRequests();
+  socket?.on("newRequest", handleNewRequest);
+
+  return () => {
+    socket?.off("newRequest", handleNewRequest);
+  };
   }, []);
 
   const testSound = () => {

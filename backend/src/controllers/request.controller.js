@@ -130,14 +130,28 @@ export const rejectRequest = async (req, res) => {
 export const getPendingRequests = async (req, res) => {
   try {
 
+    console.log("REQ USER:", req.user._id);
+
+    const allRequests = await ChatRequest.find();
+
+    console.log("ALL REQUESTS:", allRequests);
+
+
     const requests = await ChatRequest.find({
       receiverId: req.user._id,
       status: "pending",
     }).populate("senderId", "fullName profilePic username");
 
+    console.log("FILTERED:", requests);
+
     res.status(200).json(requests);
 
   } catch (error) {
+     console.log(
+      "Error in getPendingRequests:",
+      error.message
+    );
+
     res.status(500).json({
       message: "Internal server error",
     });

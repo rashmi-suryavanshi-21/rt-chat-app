@@ -14,6 +14,8 @@ import {
 
 import { protectRoute } from "../middleware/auth.middleware.js";
 
+console.log("Request route loaded");
+
 const router = express.Router();
 
 router.post("/send/:id", protectRoute, sendRequest);
@@ -23,6 +25,11 @@ router.put("/accept/:id", protectRoute, acceptRequest);
 router.delete("/reject/:id", protectRoute, rejectRequest);
 
 router.get("/pending", protectRoute, getPendingRequests);
+
+// router.get("/pending", (req, res) => {
+//   console.log("PENDING ROUTE HIT");
+//   res.json([]);
+// });
 
 router.get("/status/:id", protectRoute, getRequestStatus);
 

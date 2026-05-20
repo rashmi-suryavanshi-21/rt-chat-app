@@ -7,7 +7,8 @@ import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { axiosInstance } from "../lib/axios";
 
-const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
+const MessageInput = ({ editingMsg, setEditingMsg }) => {
+  // 🔥 props added
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [showScheduler, setShowScheduler] = useState(false);
@@ -46,6 +47,8 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
   };
 
   const removeImage = () => {
+    if (isSending) return;
+
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -55,14 +58,18 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
     const symbol = emoji.native || "";
     setText((prev) => prev + symbol);
   };
+  const [isSending, setIsSending] = useState(false);
 
   // ================= SEND / EDIT =================
   const handleSendMessage = async (e) => {
     e.preventDefault();
 
+    if (isSending) return;
+
     if (!text.trim() && !imagePreview) return;
 
     try {
+      setIsSending(true);
       if (editingMsg) {
         // 🔥 EDIT MODE
         await updateMessage(editingMsg._id, text.trim());
@@ -80,6 +87,8 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Failed:", error);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -87,6 +96,13 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
   const handleSchedule = async () => {
     if (!text.trim() || !scheduledTime) {
       toast.error("Text and time is required");
+      return;
+    }
+
+    const selectedDate = new Date(scheduledTime);
+
+    if (selectedDate <= new Date()) {
+      toast.error("Please select a future time");
       return;
     }
 
@@ -100,7 +116,7 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
         },
         {
           withCredentials: true,
-        }
+        },
       );
 
       const savedMessage = res.data;
@@ -151,13 +167,12 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
     }, 2000);
   };
 
-  const now = new Date().toISOString().slice(0, 16);
-
- 
+  const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
 
   return (
     <div className="p-4 w-full">
-      
       {/* 🔥 EDIT MODE UI */}
       {editingMsg && (
         <div className="mb-2 text-xs text-blue-400 flex justify-between items-center">
@@ -174,18 +189,23 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
               alt="Preview"
               className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
             />
-            <button
-              onClick={removeImage}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
-              type="button"
-            >
-              <X className="size-3" />
-            </button>
+            {!isSending && (
+              <button
+                onClick={removeImage}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
+                type="button"
+              >
+                <X className="size-3" />
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSendMessage} className="flex items-center gap-2 relative">
+      <form
+        onSubmit={handleSendMessage}
+        className="flex items-center gap-2 relative"
+      >
         <div className="flex-1 flex gap-2">
           <input
             type="text"
@@ -205,6 +225,7 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
 
           <button
             type="button"
+            disabled={isSending}
             className={`hidden sm:flex btn btn-circle ${
               imagePreview ? "text-emerald-500" : "text-zinc-400"
             }`}
@@ -232,10 +253,14 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
 
         <button
           type="submit"
-          className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !imagePreview}
+          className="btn btn-circle"
+          disabled={isSending || (!text.trim() && !imagePreview)}
         >
-          <Send size={22} />
+          {isSending ? (
+            <span className="loading loading-spinner loading-xs"></span>
+          ) : (
+            <Send size={20} />
+          )}
         </button>
 
         {showEmoji && (
@@ -255,10 +280,7 @@ const MessageInput = ({ editingMsg, setEditingMsg }) => { // 🔥 props added
             className="input input-bordered input-sm"
           />
 
-          <button
-            onClick={handleSchedule}
-            className="btn btn-sm btn-primary"
-          >
+          <button onClick={handleSchedule} className="btn btn-sm btn-primary">
             Confirm
           </button>
         </div>
